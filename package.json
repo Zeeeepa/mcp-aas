@@ -33,7 +33,6 @@
   "devDependencies": {
     "@cucumber/cucumber": "^11.2.0",
     "@playwright/test": "^1.51.0",
-    "aws-sdk": "^2.1692.0",
     "chai": "^4.3.7",
     "concurrently": "^8.2.0",
     "cypress": "^14.1.0",
