@@ -1,168 +1,40 @@
-import { Auth } from 'aws-amplify';
-
-export interface SignUpParams {
+export interface User {
+  id: string;
   username: string;
-  password: string;
-  email: string;
-  givenName: string;
-  familyName: string;
 }
 
-export interface SignInParams {
-  username: string;
-  password: string;
+export interface AuthService {
+  isAuthenticated: boolean;
+  user: User | null;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-export interface AuthResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-}
+class LocalAuthService implements AuthService {
+  private _isAuthenticated: boolean = false;
+  private _user: User | null = null;
 
-/**
- * Auth service for handling authentication with AWS Cognito
- */
-export class AuthService {
-  /**
-   * Register a new user
-   */
-  async signUp({ username, password, email, givenName, familyName }: SignUpParams): Promise<AuthResponse> {
-    try {
-      const result = await Auth.signUp({
-        username,
-        password,
-        attributes: {
-          email,
-          given_name: givenName,
-          family_name: familyName,
-        },
-      });
-      
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error) {
-      console.error('Error signing up:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to sign up',
-      };
-    }
+  get isAuthenticated(): boolean {
+    return this._isAuthenticated;
   }
 
-  /**
-   * Confirm sign up with verification code
-   */
-  async confirmSignUp(username: string, code: string): Promise<AuthResponse> {
-    try {
-      const result = await Auth.confirmSignUp(username, code);
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error) {
-      console.error('Error confirming sign up:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to confirm sign up',
-      };
-    }
+  get user(): User | null {
+    return this._user;
   }
 
-  /**
-   * Sign in a user
-   */
-  async signIn({ username, password }: SignInParams): Promise<AuthResponse> {
-    try {
-      const user = await Auth.signIn(username, password);
-      return {
-        success: true,
-        data: user,
-      };
-    } catch (error) {
-      console.error('Error signing in:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to sign in',
-      };
-    }
+  async login(): Promise<void> {
+    // For local development, auto-login with test user
+    this._isAuthenticated = true;
+    this._user = {
+      id: 'local-user',
+      username: 'test-user'
+    };
   }
 
-  /**
-   * Sign out the current user
-   */
-  async signOut(): Promise<AuthResponse> {
-    try {
-      await Auth.signOut();
-      return {
-        success: true,
-      };
-    } catch (error) {
-      console.error('Error signing out:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to sign out',
-      };
-    }
-  }
-
-  /**
-   * Get the current authenticated user
-   */
-  async currentUser(): Promise<AuthResponse> {
-    try {
-      const user = await Auth.currentAuthenticatedUser();
-      return {
-        success: true,
-        data: user,
-      };
-    } catch (error) {
-      console.error('Error getting current user:', error);
-      return {
-        success: false,
-        error: error.message || 'No authenticated user',
-      };
-    }
-  }
-
-  /**
-   * Reset password - send verification code
-   */
-  async forgotPassword(username: string): Promise<AuthResponse> {
-    try {
-      const result = await Auth.forgotPassword(username);
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error) {
-      console.error('Error requesting password reset:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to request password reset',
-      };
-    }
-  }
-
-  /**
-   * Complete password reset with verification code
-   */
-  async forgotPasswordSubmit(username: string, code: string, newPassword: string): Promise<AuthResponse> {
-    try {
-      const result = await Auth.forgotPasswordSubmit(username, code, newPassword);
-      return {
-        success: true,
-        data: result,
-      };
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to reset password',
-      };
-    }
+  async logout(): Promise<void> {
+    this._isAuthenticated = false;
+    this._user = null;
   }
 }
 
-export default new AuthService();
+export const authService = new LocalAuthService();
