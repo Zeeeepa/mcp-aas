@@ -1,48 +1,25 @@
 version: '3.8'
 
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - MONGODB_URI=mongodb://mongo:27017/mcp-aas
-    volumes:
-      - ./backend:/app/backend
-      - ./shared:/app/shared
-      - /app/backend/node_modules
-      - /app/shared/node_modules
-    depends_on:
-      - mongo
-    command: npm run dev
-
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:3001
-    volumes:
-      - ./frontend:/app/frontend
-      - ./shared:/app/shared
-      - /app/frontend/node_modules
-      - /app/shared/node_modules
-    depends_on:
-      - backend
-    command: npm start
-
-  mongo:
+  mongodb:
     image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
+      - mongodb_data:/data/db
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/mcp
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
 
 volumes:
-  mongo-data:
+  mongodb_data:
