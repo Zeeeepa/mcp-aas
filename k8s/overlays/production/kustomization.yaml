@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mcp-aas-production
+namePrefix: prod-
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+patches:
+  - path: replicas.yaml
+  - path: resources.yaml
+
+secretGenerator:
+  - name: mongodb-secret
+    literals:
+      - uri=mongodb://prod-mongodb:27017/mcp-aas
+  - name: jwt-secret
+    literals:
+      - secret=your-production-jwt-secret
+  - name: minio-secret
+    literals:
+      - root-user=minioadmin
+      - root-password=your-production-minio-password
+  - name: postgresql-secret
+    literals:
+      - username=temporal
+      - password=your-production-postgresql-password
+  - name: nginx-certs
+    files:
+      - tls.crt
+      - tls.key
