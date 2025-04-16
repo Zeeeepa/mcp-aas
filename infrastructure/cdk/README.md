@@ -1,58 +1,131 @@
-# MCP-aaS Infrastructure
+# MCP-AAS CDK Deployment Guide
 
-This directory contains the AWS CDK infrastructure code for the MCP-aaS platform. It defines all the AWS resources required to run the application, including authentication with AWS Cognito.
-
-## Architecture
-
-The infrastructure is separated into multiple stacks:
-
-- **Auth Stack**: AWS Cognito User Pool, Identity Pool, and related resources for authentication
-- **Main Stack**: Core application infrastructure resources
-
-## Authentication Setup
-
-The authentication infrastructure uses:
-
-- **AWS Cognito User Pool**: For user registration, authentication, and account management
-- **AWS Cognito Identity Pool**: To provide AWS credentials for authenticated users
-- **OAuth 2.0 / OpenID Connect**: For standard authentication flows
+This guide will help you set up and deploy the AWS CDK stacks for the MCP-AAS project.
 
 ## Prerequisites
 
-- Node.js 18+
-- AWS CLI configured with appropriate credentials
-- AWS CDK CLI installed globally (`npm install -g aws-cdk`)
+- [Node.js](https://nodejs.org/) (v14 or later)
+- [AWS CLI](https://aws.amazon.com/cli/) installed and configured
+- AWS account with appropriate permissions
 
-## Getting Started
+## Setup AWS Configuration
 
-1. Install dependencies:
-```bash
-npm install
+Before deploying the CDK stacks, you need to configure your AWS account and region. You can do this in one of the following ways:
+
+### Option 1: Using the Setup Script (Windows)
+
+1. Navigate to the `infrastructure/cdk` directory:
+   ```
+   cd infrastructure/cdk
+   ```
+
+2. Run the setup script:
+   ```
+   setup-aws-config.bat
+   ```
+
+3. Follow the prompts to enter your AWS account ID and preferred region.
+
+### Option 2: Using the Setup Script (Node.js)
+
+1. Navigate to the `infrastructure/cdk` directory:
+   ```
+   cd infrastructure/cdk
+   ```
+
+2. Run the setup script:
+   ```
+   node setup-aws-config.js
+   ```
+
+3. Follow the prompts to enter your AWS account ID and preferred region.
+
+### Option 3: Manual Configuration
+
+1. Create a `.env` file in the `infrastructure/cdk` directory with the following content:
+   ```
+   CDK_DEFAULT_ACCOUNT=your-aws-account-id
+   CDK_DEFAULT_REGION=your-preferred-region
+   ```
+
+2. Replace `your-aws-account-id` with your AWS account ID and `your-preferred-region` with your preferred AWS region (e.g., `us-east-1`).
+
+## AWS CLI Configuration
+
+Make sure your AWS CLI is configured with valid credentials. You can configure it by running:
+
+```
+aws configure
 ```
 
-2. Build the project:
-```bash
-npm run build
+Or manually create/edit the following files:
+
+### For Windows:
+
+```
+%USERPROFILE%\.aws\credentials:
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY
+aws_secret_access_key = YOUR_SECRET_KEY
+
+%USERPROFILE%\.aws\config:
+[default]
+region = your-preferred-region
+output = json
 ```
 
-3. Deploy to AWS:
-```bash
-npx cdk deploy McpAasAuthStack
-# or to deploy all stacks:
-npx cdk deploy --all
+### For Linux/Mac:
+
+```
+~/.aws/credentials:
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY
+aws_secret_access_key = YOUR_SECRET_KEY
+
+~/.aws/config:
+[default]
+region = your-preferred-region
+output = json
 ```
 
-4. To get the Cognito configuration for your frontend:
-```bash
-aws cloudformation describe-stacks --stack-name McpAasAuthStack --query 'Stacks[0].Outputs'
-```
+## Deploy CDK Stacks
 
-## Useful Commands
+Once you have configured your AWS account and region, you can deploy the CDK stacks:
 
-* `npm run build`   compile TypeScript to JS
-* `npm run watch`   watch for changes and compile
-* `npm run test`    run the Jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
-* `npx cdk destroy` destroy the stack from AWS
+1. Navigate to the `infrastructure/cdk` directory:
+   ```
+   cd infrastructure/cdk
+   ```
+
+2. Install dependencies (if not already installed):
+   ```
+   npm install
+   ```
+
+3. Deploy all stacks:
+   ```
+   npx cdk deploy --all
+   ```
+
+## Troubleshooting
+
+### Error: Unable to resolve AWS account to use
+
+If you encounter the error "Unable to resolve AWS account to use", make sure:
+
+1. You have created a `.env` file with the correct AWS account ID and region.
+2. You have configured the AWS CLI with valid credentials.
+3. You are in the correct directory (`infrastructure/cdk`) when running the deployment command.
+
+### Error: AWS credentials not found
+
+If you encounter an error related to AWS credentials, make sure:
+
+1. You have installed and configured the AWS CLI.
+2. You have valid AWS credentials in the appropriate location.
+3. Your AWS credentials have the necessary permissions to deploy CDK stacks.
+
+## Additional Resources
+
+- [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/latest/guide/home.html)
+- [AWS CLI Documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html)
