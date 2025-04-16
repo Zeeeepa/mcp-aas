@@ -1,58 +1,77 @@
-# MCP-aaS Infrastructure
+# MCP-AAS Local Development with LocalStack
 
-This directory contains the AWS CDK infrastructure code for the MCP-aaS platform. It defines all the AWS resources required to run the application, including authentication with AWS Cognito.
-
-## Architecture
-
-The infrastructure is separated into multiple stacks:
-
-- **Auth Stack**: AWS Cognito User Pool, Identity Pool, and related resources for authentication
-- **Main Stack**: Core application infrastructure resources
-
-## Authentication Setup
-
-The authentication infrastructure uses:
-
-- **AWS Cognito User Pool**: For user registration, authentication, and account management
-- **AWS Cognito Identity Pool**: To provide AWS credentials for authenticated users
-- **OAuth 2.0 / OpenID Connect**: For standard authentication flows
+This guide will help you set up and run the MCP-AAS application locally without requiring an AWS account by using LocalStack.
 
 ## Prerequisites
 
-- Node.js 18+
-- AWS CLI configured with appropriate credentials
-- AWS CDK CLI installed globally (`npm install -g aws-cdk`)
+- Docker and Docker Compose
+- Node.js and npm
+- Git
 
-## Getting Started
+## Setup LocalStack
 
-1. Install dependencies:
+1. Run the LocalStack setup script:
+
 ```bash
-npm install
+cd infrastructure/cdk
+chmod +x localstack-setup.sh
+./localstack-setup.sh
 ```
 
-2. Build the project:
+This script will:
+- Create a docker-compose file for LocalStack
+- Create a .env.local file with mock AWS credentials
+- Create a deploy-to-localstack.sh script
+
+2. Start LocalStack:
+
 ```bash
-npm run build
+docker-compose -f docker-compose.localstack.yml up -d
 ```
 
-3. Deploy to AWS:
+3. Deploy the CDK stacks to LocalStack:
+
 ```bash
-npx cdk deploy McpAasAuthStack
-# or to deploy all stacks:
-npx cdk deploy --all
+chmod +x deploy-to-localstack.sh
+./deploy-to-localstack.sh
 ```
 
-4. To get the Cognito configuration for your frontend:
+## Running the Application Locally
+
+Once you have LocalStack running and the CDK stacks deployed, you can run the application locally:
+
+1. Start the backend and frontend:
+
 ```bash
-aws cloudformation describe-stacks --stack-name McpAasAuthStack --query 'Stacks[0].Outputs'
+docker-compose up -d
 ```
 
-## Useful Commands
+2. Access the application at http://localhost:3000
 
-* `npm run build`   compile TypeScript to JS
-* `npm run watch`   watch for changes and compile
-* `npm run test`    run the Jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
-* `npx cdk destroy` destroy the stack from AWS
+## Troubleshooting
+
+If you encounter any issues:
+
+1. Check if LocalStack is running:
+
+```bash
+docker ps | grep localstack
+```
+
+2. Check LocalStack logs:
+
+```bash
+docker logs localstack-mcp-aas
+```
+
+3. Verify the CDK deployment:
+
+```bash
+AWS_ENDPOINT_URL=http://localhost:4566 aws cloudformation list-stacks
+```
+
+## Notes
+
+- This setup is for local development only and does not require an AWS account
+- All AWS services are mocked by LocalStack
+- The application will use a local MongoDB instance for data storage
