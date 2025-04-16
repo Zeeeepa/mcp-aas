@@ -1,7 +1,6 @@
 {
   "name": "mcp-aas",
-  "version": "0.1.0",
-  "description": "Model Context Protocol as a Service",
+  "version": "1.0.0",
   "private": true,
   "workspaces": [
     "frontend",
@@ -11,48 +10,9 @@
   "scripts": {
     "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "start:frontend": "cd frontend && npm start",
-    "start:backend": "cd backend && npm start",
-    "build": "npm run build:shared && npm run build:frontend && npm run build:backend",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
-    "build:shared": "cd shared && npm run build",
-    "test": "npm run test:shared && npm run test:frontend && npm run test:backend",
-    "test:frontend": "cd frontend && npm test",
-    "test:backend": "cd backend && npm test",
-    "test:shared": "cd shared && npm test",
-    "test:e2e": "cucumber-js",
-    "test:e2e:ui": "HEADLESS=false cucumber-js",
-    "test:e2e:update-config": "node scripts/update-e2e-config.js",
-    "test:e2e:with-app": "concurrently --kill-others --success first \"npm start\" \"wait-on http://localhost:3000 && npm run test:e2e\"",
-    "test:e2e:setup-local": "node scripts/setup-local-test-env.js",
-    "lint": "npm run lint:frontend && npm run lint:backend && npm run lint:shared",
-    "lint:frontend": "cd frontend && npm run lint",
-    "lint:backend": "cd backend && npm run lint",
-    "lint:shared": "cd shared && npm run lint"
+    "start:backend": "cd backend && npm run dev"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^11.2.0",
-    "@playwright/test": "^1.51.0",
-    "aws-sdk": "^2.1692.0",
-    "chai": "^4.3.7",
-    "concurrently": "^8.2.0",
-    "cypress": "^14.1.0",
-    "cypress-cucumber-preprocessor": "^4.3.1",
-    "playwright": "^1.51.0",
-    "wait-on": "^8.0.2"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
-  "author": "",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cajias/mcp-aas.git"
-  },
-  "bugs": {
-    "url": "https://github.com/cajias/mcp-aas/issues"
-  },
-  "homepage": "https://github.com/cajias/mcp-aas#readme"
+    "concurrently": "^8.0.0"
+  }
 }
