@@ -1,83 +1,91 @@
-import { Router } from 'express';
-import { Tool } from '@mcp-aas/shared';
+import express from 'express';
+import { Tool } from '../types/tool';
 
-const router = Router();
+const router = express.Router();
+
+// In-memory tool storage (replace with database in production)
+const tools: Tool[] = [
+  {
+    id: 'mcp-code-assistant',
+    name: 'MCP Code Assistant',
+    description: 'AI-powered code analysis and generation',
+    category: 'development',
+    version: '1.0.0',
+    status: 'active',
+    capabilities: [
+      'Code analysis',
+      'Refactoring suggestions',
+      'Documentation generation',
+      'Bug detection'
+    ]
+  },
+  {
+    id: 'mcp-data-analyzer',
+    name: 'MCP Data Analyzer',
+    description: 'Advanced data analysis and visualization',
+    category: 'analysis',
+    version: '1.0.0',
+    status: 'active',
+    capabilities: [
+      'Data visualization',
+      'Statistical analysis',
+      'Pattern detection',
+      'Anomaly detection'
+    ]
+  },
+  {
+    id: 'mcp-automation',
+    name: 'MCP Automation',
+    description: 'Workflow automation and task scheduling',
+    category: 'automation',
+    version: '1.0.0',
+    status: 'active',
+    capabilities: [
+      'Task scheduling',
+      'Workflow automation',
+      'Integration management',
+      'Event triggers'
+    ]
+  }
+];
 
 // Get all tools
-router.get('/', (req, res) => {
-  // Mock data
-  const tools: Tool[] = [
-    {
-      id: 'tool-1',
-      name: 'MCP Code Assistant',
-      description: 'AI-powered code assistant',
-      category: 'developer',
-      icon: 'code-icon.png',
-      version: '1.0.0',
-      status: 'active'
-    },
-    {
-      id: 'tool-2',
-      name: 'MCP Chat',
-      description: 'AI chat interface',
-      category: 'communication',
-      icon: 'chat-icon.png',
-      version: '1.0.0',
-      status: 'active'
-    }
-  ];
-  
-  res.status(200).json({
-    success: true,
-    data: tools
+router.get('/discover', (req, res) => {
+  res.json({
+    tools,
+    total: tools.length,
+    page: 1,
+    pageSize: tools.length
   });
 });
 
 // Get tool by ID
 router.get('/:id', (req, res) => {
-  // Mock data
-  const tool: Tool = {
-    id: req.params.id,
-    name: 'MCP Code Assistant',
-    description: 'AI-powered code assistant',
-    category: 'developer',
-    icon: 'code-icon.png',
-    version: '1.0.0',
-    status: 'active'
-  };
-  
-  res.status(200).json({
-    success: true,
-    data: tool
-  });
+  const tool = tools.find(t => t.id === req.params.id);
+  if (!tool) {
+    return res.status(404).json({ error: 'Tool not found' });
+  }
+  res.json(tool);
 });
 
-// Launch a tool
+// Launch tool
 router.post('/:id/launch', (req, res) => {
-  const toolId = req.params.id;
-  const userId = req.body.userId;
-  
-  // Mock connection URL
-  const connectionUrl = `wss://api.mcp-aas.com/tools/${toolId}/connect?token=mock-token`;
-  
-  res.status(200).json({
-    success: true,
-    data: {
-      connectionUrl,
-      token: 'mock-token',
-      expiresAt: new Date(Date.now() + 3600 * 1000)
-    }
-  });
+  const tool = tools.find(t => t.id === req.params.id);
+  if (!tool) {
+    return res.status(404).json({ error: 'Tool not found' });
+  }
+  // In a real implementation, this would launch the tool
+  res.json({ message: 'Tool launched successfully' });
 });
 
-// Stop a tool
-router.post('/:id/stop', (req, res) => {
-  res.status(200).json({
-    success: true,
-    data: {
-      message: 'Tool stopped successfully'
-    }
-  });
+// Update tool configuration
+router.patch('/:id/config', (req, res) => {
+  const tool = tools.find(t => t.id === req.params.id);
+  if (!tool) {
+    return res.status(404).json({ error: 'Tool not found' });
+  }
+  // In a real implementation, this would update the tool's configuration
+  res.json(tool);
 });
 
-export const toolRoutes = router;
+export default router;
