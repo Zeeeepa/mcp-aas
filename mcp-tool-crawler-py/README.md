@@ -1,105 +1,119 @@
 # MCP Tool Crawler
 
-A tool for crawling and cataloging MCP (Model Context Protocol) tools from various sources.
-
-## Storage Options
-
-The MCP Tool Crawler supports multiple storage backends:
-
-1. **SQLite Storage** (default): Local SQLite database for storing tools, sources, and crawler data
-2. **Local Storage**: Simple JSON file-based storage for tools
-3. **S3 Storage**: AWS S3-based storage for production environments
-
-See [SQLite Storage Documentation](SQLITE_STORAGE.md) for details on the SQLite implementation.
-
-## Source List Management
-
-## Overview
-
-The MCP Tool Crawler discovers and catalogs tools that implement the Model Context Protocol from various sources, including GitHub repositories, awesome lists, and websites. It stores the discovered tools in a local SQLite database and provides a command-line interface for managing the crawling process.
+A Python tool for discovering and crawling MCP (Model Context Protocol) tools from various sources.
 
 ## Features
 
-- Crawl GitHub awesome lists for MCP tools
-- Crawl websites for MCP tools
-- Store tools in a local SQLite database
-- Export tools to JSON format
-- Command-line interface for managing the crawling process
+- Discover MCP tools from GitHub awesome lists
+- Store tool information locally in SQLite or JSON files
+- Simple command-line interface
+- No authentication required for basic usage
 
 ## Installation
 
 1. Clone the repository:
-
 ```bash
 git clone https://github.com/Zeeeepa/mcp-aas.git
 cd mcp-aas/mcp-tool-crawler-py
 ```
 
-2. Install dependencies:
+2. Install the package:
+```bash
+pip install -e .
+```
+
+## Usage
+
+### Initialize Sources
+
+Initialize the crawler with predefined sources:
 
 ```bash
-pip install -r requirements.txt
+python -m src.cli init
+```
+
+### List Sources
+
+List all available sources:
+
+```bash
+python -m src.cli list
+```
+
+### Add a Source
+
+Add a new source:
+
+```bash
+python -m src.cli add https://github.com/username/repo
+```
+
+You can also specify a name and type:
+
+```bash
+python -m src.cli add https://github.com/username/repo --name "My Awesome List" --type github_awesome_list
+```
+
+### Crawl Sources
+
+Crawl a specific source by ID:
+
+```bash
+python -m src.cli crawl --id source-12345678
+```
+
+Crawl all sources:
+
+```bash
+python -m src.cli crawl --all
+```
+
+Force crawl all sources (ignoring last crawl time):
+
+```bash
+python -m src.cli crawl --all --force
+```
+
+Limit concurrency:
+
+```bash
+python -m src.cli crawl --all --concurrency 3
 ```
 
 ## Configuration
 
-The MCP Tool Crawler can be configured using environment variables or a `.env` file. See the [configuration documentation](./docs/configuration.md) for details.
+The crawler can be configured using environment variables or a `.env` file in the project root:
 
-## Usage
+```
+# Data storage paths
+DATA_DIR=./data
+SQLITE_DB_PATH=./data/mcp_tools.db
+TOOLS_FILE_PATH=./data/tools.json
+SOURCES_FILE_PATH=./data/sources.yaml
 
-### Command-line Interface
+# GitHub API (optional)
+GITHUB_TOKEN=your_github_token
 
-The MCP Tool Crawler provides a command-line interface for managing the crawling process:
+# Crawler Settings
+CRAWLER_TIMEOUT=30000
+CRAWLER_USER_AGENT=MCP-Tool-Crawler/1.0
+CRAWLER_CONCURRENCY_LIMIT=5
 
-```bash
-# Initialize sources
-python -m src.cli init-sources
-
-# Crawl all sources
-python -m src.cli crawl-all
-
-# Crawl a specific source
-python -m src.cli crawl-source --url https://github.com/example/awesome-list
-
-# Add a new source
-python -m src.cli add-source --url https://github.com/example/awesome-list --name "Example Awesome List"
-
-# Export tools to JSON
-python -m src.cli export-tools --output tools.json
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE_PATH=./logs/mcp_tool_crawler.log
 ```
 
-### Python API
+Note: The GitHub token is optional but recommended to avoid rate limiting when crawling GitHub repositories.
 
-The MCP Tool Crawler can also be used as a Python library:
+## Storage Options
 
-```python
-import asyncio
-from src.services.source_manager import SourceManager
-from src.services.crawler_service import CrawlerService
+The crawler supports two storage options:
 
-async def main():
-    # Initialize sources
-    source_manager = SourceManager()
-    sources = await source_manager.initialize_sources()
-    
-    # Crawl sources
-    crawler_service = CrawlerService()
-    results = await crawler_service.crawl_all_sources()
-    
-    print(f"Crawled {len(results)} sources")
+1. **SQLite**: Default storage option, stores data in a SQLite database.
+2. **Local**: Stores data in JSON and YAML files.
 
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-## Storage
-
-The MCP Tool Crawler supports two storage options:
-
-1. **SQLite Storage** (default): Uses a SQLite database to store tools and sources.
-2. **Local File Storage**: Uses JSON and YAML files to store tools and sources.
-
-You can switch between these options by setting the `USE_SQLITE` environment variable to `true` or `false`.
+You can switch between storage options by modifying the `storage_type` parameter in the `SourceManager` constructor in `src/source_manager.py`.
 
 ## Development
 
@@ -109,19 +123,12 @@ You can switch between these options by setting the `USE_SQLITE` environment var
 pytest
 ```
 
-### Code Style
+### Adding a New Crawler
 
-```bash
-flake8 src tests
-```
+To add a new crawler for a different source type:
 
-## License
-
-[MIT](LICENSE)
-
-- **Advanced Deduplication**: ML-based similarity detection for tools
-- **Web UI**: Management interface for sources and tools
-- **Additional Sources**: Support for more types of sources
-- **Enhanced Metadata**: Extract and normalize more tool metadata
-- **CI/CD Pipeline**: Automated testing and deployment
+1. Create a new crawler class that extends `BaseCrawler` in `src/crawler.py`
+2. Implement the `discover_tools` method
+3. Add the new source type to the `SourceType` enum in `src/models.py`
+4. Update the `CrawlerFactory.create_crawler` method to support the new source type
 
