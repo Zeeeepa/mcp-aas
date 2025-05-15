@@ -17,6 +17,7 @@ This monorepo contains:
 - `backend/`: Node.js/Express backend services
 - `infrastructure/`: AWS CDK code for infrastructure deployment
 - `shared/`: Shared libraries and utilities
+- `mcp-tool-crawler-py/`: Python tool for crawling and cataloging MCP tools
 
 ## Key Features
 
