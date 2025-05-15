@@ -2,6 +2,16 @@
 
 A Python-based service for discovering, crawling, and cataloging Machine Context Protocol (MCP) tools from various sources. The crawler leverages AWS Step Functions and AI-powered code generation to automatically extract MCP tools from diverse sources.
 
+## Storage Options
+
+The MCP Tool Crawler supports multiple storage backends:
+
+1. **SQLite Storage** (default): Local SQLite database for storing tools, sources, and crawler data
+2. **Local Storage**: Simple JSON file-based storage for tools
+3. **S3 Storage**: AWS S3-based storage for production environments
+
+See [SQLite Storage Documentation](SQLITE_STORAGE.md) for details on the SQLite implementation.
+
 ## Source List Management
 
 Sources to crawl are managed in a YAML file (`sample-sources.yaml`) which is uploaded to S3 when changes are pushed to GitHub.
