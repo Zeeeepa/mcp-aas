@@ -5,7 +5,6 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
 // Import routes
-import { authRoutes } from './routes/auth';
 import { toolRoutes } from './routes/tools';
 import { userRoutes } from './routes/users';
 
@@ -21,7 +20,6 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/users', userRoutes);
 
