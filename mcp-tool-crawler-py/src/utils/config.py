@@ -14,19 +14,11 @@ dotenv_path = Path(__file__).parents[2] / '.env'
 if dotenv_path.exists():
     load_dotenv(dotenv_path)
 
-# AWS Configuration
-AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-AWS_PROFILE = os.getenv('AWS_PROFILE', 'default')
-
-# AWS Resources
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'mcp-tool-catalog')
-DYNAMODB_TOOLS_TABLE = os.getenv('DYNAMODB_TOOLS_TABLE', 'mcp-tools')
-DYNAMODB_SOURCES_TABLE = os.getenv('DYNAMODB_SOURCES_TABLE', 'mcp-sources')
-DYNAMODB_CRAWLERS_TABLE = os.getenv('DYNAMODB_CRAWLERS_TABLE', 'mcp-crawlers')
-DYNAMODB_CRAWL_RESULTS_TABLE = os.getenv('DYNAMODB_CRAWL_RESULTS_TABLE', 'mcp-crawl-results')
-
-# S3 Source List Configuration
-S3_SOURCE_LIST_KEY = os.getenv('S3_SOURCE_LIST_KEY', 'sources.yaml')
+# Data storage paths
+DATA_DIR = os.getenv('DATA_DIR', str(Path(__file__).parents[3] / 'data'))
+SQLITE_DB_PATH = os.getenv('SQLITE_DB_PATH', str(Path(DATA_DIR) / 'mcp_tools.db'))
+TOOLS_FILE_PATH = os.getenv('TOOLS_FILE_PATH', str(Path(DATA_DIR) / 'tools.json'))
+SOURCES_FILE_PATH = os.getenv('SOURCES_FILE_PATH', str(Path(DATA_DIR) / 'sources.yaml'))
 
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
@@ -42,6 +34,7 @@ GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
 
 # Logging
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+LOG_FILE_PATH = os.getenv('LOG_FILE_PATH', str(Path(__file__).parents[3] / 'logs' / 'mcp_tool_crawler.log'))
 
 # Pre-defined sources
 PREDEFINED_SOURCES = {
@@ -61,19 +54,14 @@ PREDEFINED_SOURCES = {
 def get_config() -> Dict[str, Any]:
     """Return the configuration as a dictionary."""
     return {
-        "aws": {
-            "region": AWS_REGION,
-            "profile": AWS_PROFILE,
-            "dynamodb_tables": {
-                "tools": DYNAMODB_TOOLS_TABLE,
-                "sources": DYNAMODB_SOURCES_TABLE,
-                "crawlers": DYNAMODB_CRAWLERS_TABLE,
-                "crawl_results": DYNAMODB_CRAWL_RESULTS_TABLE,
+        "storage": {
+            "sqlite": {
+                "db_path": SQLITE_DB_PATH,
             },
-            "s3": {
-                "bucket_name": S3_BUCKET_NAME,
-                "tool_catalog_key": "tools.json",
-                "source_list_key": S3_SOURCE_LIST_KEY,
+            "local": {
+                "tools_file_path": TOOLS_FILE_PATH,
+                "sources_file_path": SOURCES_FILE_PATH,
+                "data_dir": DATA_DIR,
             },
         },
         "openai": {
@@ -91,5 +79,8 @@ def get_config() -> Dict[str, Any]:
         "sources": PREDEFINED_SOURCES,
         "logging": {
             "level": LOG_LEVEL,
+            "file_path": LOG_FILE_PATH,
         },
     }
+"""
+

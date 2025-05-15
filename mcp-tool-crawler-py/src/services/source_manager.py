@@ -6,9 +6,6 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional
 
-import boto3
-from boto3.dynamodb.conditions import Key, Attr
-
 from ..models import Source, SourceType
 from ..utils.logging import get_logger
 from ..utils.config import get_config
@@ -27,20 +24,19 @@ class SourceManager:
         """
         Initialize the source manager.
         """
-        # Initialize DynamoDB client
-        self.dynamodb = boto3.resource('dynamodb')
-        self.table_name = config['aws']['dynamodb_tables']['sources']
-        self.table = self.dynamodb.Table(self.table_name)
+        # Initialize storage
+        from ..storage.sqlite_storage import SQLiteSourceStorage
+        self.storage = SQLiteSourceStorage()
     
     async def initialize_sources(self) -> List[Source]:
         """
-        Initialize sources from the configuration and S3 source list.
+        Initialize sources from the configuration and local source list.
         
         This loads sources from:
-        1. The S3 source list file if available
+        1. The local source list file if available
         2. Predefined sources from configuration (as fallback)
         
-        Sources are added to DynamoDB storage for tracking.
+        Sources are added to SQLite storage for tracking.
         
         Returns:
             List of all sources (existing + newly added).
@@ -51,29 +47,27 @@ class SourceManager:
         existing_sources = await self.get_all_sources()
         existing_urls = {source.url for source in existing_sources}
         
-        # Try to load sources from S3 first
+        # Try to load sources from local file first
         try:
-            from ..storage.s3_storage import S3SourceStorage
-            s3_source_storage = S3SourceStorage()
-            s3_sources = await s3_source_storage.load_sources()
+            sources = await self.storage.load_sources()
             
-            if s3_sources:
-                logger.info(f"Loaded {len(s3_sources)} sources from S3")
+            if sources:
+                logger.info(f"Loaded {len(sources)} sources from local storage")
                 
-                # Add sources from S3 that don't already exist
-                for source in s3_sources:
+                # Add sources that don't already exist
+                for source in sources:
                     if source.url not in existing_urls:
                         await self.add_source(source)
                         existing_sources.append(source)
                         existing_urls.add(source.url)
                         
-                        logger.info(f"Added new source from S3: {source.name} ({source.url})")
+                        logger.info(f"Added new source from local storage: {source.name} ({source.url})")
                 
                 return existing_sources
         except Exception as e:
-            logger.warning(f"Error loading sources from S3, falling back to config: {str(e)}")
+            logger.warning(f"Error loading sources from local storage, falling back to config: {str(e)}")
         
-        # If no sources from S3 or error occurred, fall back to config
+        # If no sources from local storage or error occurred, fall back to config
         logger.info("Using predefined sources from configuration")
         
         # Add awesome lists from config
@@ -124,8 +118,8 @@ class SourceManager:
             The added source.
         """
         try:
-            # Save to DynamoDB
-            self.table.put_item(Item=source.dict())
+            # Save to storage
+            await self.storage.save_sources([source])
             logger.info(f"Added source: {source.name} ({source.url})")
             return source
         except Exception as e:
@@ -180,11 +174,8 @@ class SourceManager:
             List of all sources.
         """
         try:
-            # In a real implementation, this would use paginator for large numbers of sources
-            response = self.table.scan()
-            
-            sources = [Source(**item) for item in response.get('Items', [])]
-            logger.info(f"Retrieved {len(sources)} sources from DynamoDB")
+            sources = await self.storage.load_sources()
+            logger.info(f"Retrieved {len(sources)} sources from storage")
             return sources
         except Exception as e:
             logger.error(f"Error retrieving sources: {str(e)}")
@@ -235,18 +226,26 @@ class SourceManager:
             True if successful, False otherwise.
         """
         try:
-            # Update source
-            self.table.update_item(
-                Key={'id': source_id},
-                UpdateExpression='SET last_crawled = :timestamp, last_crawl_status = :status',
-                ExpressionAttributeValues={
-                    ':timestamp': datetime.now(timezone.utc).isoformat(),
-                    ':status': 'success' if success else 'failed',
-                },
-            )
+            # Get all sources
+            sources = await self.get_all_sources()
             
-            logger.info(f"Updated last crawl for source {source_id}")
-            return True
+            # Find the source to update
+            for source in sources:
+                if source.id == source_id:
+                    # Update source
+                    source.last_crawled = datetime.now(timezone.utc).isoformat()
+                    source.last_crawl_status = 'success' if success else 'failed'
+                    
+                    # Save updated sources
+                    await self.storage.save_sources(sources)
+                    
+                    logger.info(f"Updated last crawl for source {source_id}")
+                    return True
+            
+            logger.warning(f"Source {source_id} not found for update")
+            return False
         except Exception as e:
             logger.error(f"Error updating source last crawl: {str(e)}")
             return False
+"""
+
