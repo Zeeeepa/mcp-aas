@@ -5,21 +5,26 @@ Storage services for MCP tools.
 import os
 from typing import List, Union
 
-from ..models import MCPTool
-from .local_storage import LocalStorage
-from .s3_storage import S3Storage
+from ..models import MCPTool, Source
+from .local_storage import LocalStorage, LocalSourceStorage
 
 
 def get_storage():
     """
     Get the appropriate storage service based on the environment.
     
-    In production, uses S3Storage, in development, uses LocalStorage.
+    Now that S3Storage is being replaced, this always returns LocalStorage.
     
     Returns:
         A storage service instance.
     """
-    if os.environ.get('ENVIRONMENT', 'development') == 'production':
-        return S3Storage()
-    else:
-        return LocalStorage()
+    return LocalStorage()
+
+def get_source_storage():
+    """
+    Get the appropriate source storage service.
+    
+    Returns:
+        A source storage service instance.
+    """
+    return LocalSourceStorage()

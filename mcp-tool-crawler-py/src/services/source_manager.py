@@ -2,14 +2,15 @@
 Source management service for MCP tool crawler.
 """
 
-import time
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Optional
-
-import boto3
-from boto3.dynamodb.conditions import Key, Attr
+import os
+import json
+import uuid
+import asyncio
+from typing import List, Dict, Any, Optional, Union
+from datetime import datetime, timezone
 
 from ..models import Source, SourceType
+from ..storage import get_source_storage
 from ..utils.logging import get_logger
 from ..utils.config import get_config
 from ..utils.helpers import is_github_repo, extract_domain
@@ -34,10 +35,10 @@ class SourceManager:
     
     async def initialize_sources(self) -> List[Source]:
         """
-        Initialize sources from the configuration and S3 source list.
+        Initialize sources from the configuration and local source list.
         
         This loads sources from:
-        1. The S3 source list file if available
+        1. The local source list file if available
         2. Predefined sources from configuration (as fallback)
         
         Sources are added to DynamoDB storage for tracking.
@@ -51,29 +52,28 @@ class SourceManager:
         existing_sources = await self.get_all_sources()
         existing_urls = {source.url for source in existing_sources}
         
-        # Try to load sources from S3 first
+        # Try to load sources from local storage first
         try:
-            from ..storage.s3_storage import S3SourceStorage
-            s3_source_storage = S3SourceStorage()
-            s3_sources = await s3_source_storage.load_sources()
+            source_storage = get_source_storage()
+            local_sources = await source_storage.load_sources()
             
-            if s3_sources:
-                logger.info(f"Loaded {len(s3_sources)} sources from S3")
+            if local_sources:
+                logger.info(f"Loaded {len(local_sources)} sources from local storage")
                 
-                # Add sources from S3 that don't already exist
-                for source in s3_sources:
+                # Add sources from local storage that don't already exist
+                for source in local_sources:
                     if source.url not in existing_urls:
                         await self.add_source(source)
                         existing_sources.append(source)
                         existing_urls.add(source.url)
                         
-                        logger.info(f"Added new source from S3: {source.name} ({source.url})")
+                        logger.info(f"Added new source from local storage: {source.name} ({source.url})")
                 
                 return existing_sources
         except Exception as e:
-            logger.warning(f"Error loading sources from S3, falling back to config: {str(e)}")
+            logger.warning(f"Error loading sources from local storage, falling back to config: {str(e)}")
         
-        # If no sources from S3 or error occurred, fall back to config
+        # If no sources from local storage or error occurred, fall back to config
         logger.info("Using predefined sources from configuration")
         
         # Add awesome lists from config
