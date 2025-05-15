@@ -14,19 +14,11 @@ dotenv_path = Path(__file__).parents[2] / '.env'
 if dotenv_path.exists():
     load_dotenv(dotenv_path)
 
-# AWS Configuration
-AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
-AWS_PROFILE = os.getenv('AWS_PROFILE', 'default')
-
-# AWS Resources
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'mcp-tool-catalog')
-DYNAMODB_TOOLS_TABLE = os.getenv('DYNAMODB_TOOLS_TABLE', 'mcp-tools')
-DYNAMODB_SOURCES_TABLE = os.getenv('DYNAMODB_SOURCES_TABLE', 'mcp-sources')
-DYNAMODB_CRAWLERS_TABLE = os.getenv('DYNAMODB_CRAWLERS_TABLE', 'mcp-crawlers')
-DYNAMODB_CRAWL_RESULTS_TABLE = os.getenv('DYNAMODB_CRAWL_RESULTS_TABLE', 'mcp-crawl-results')
-
-# S3 Source List Configuration
-S3_SOURCE_LIST_KEY = os.getenv('S3_SOURCE_LIST_KEY', 'sources.yaml')
+# Local Storage Configuration
+DATA_DIR = os.getenv('DATA_DIR', str(Path(__file__).parents[3] / 'data'))
+TOOLS_FILE = os.getenv('TOOLS_FILE', 'tools.json')
+SOURCES_FILE = os.getenv('SOURCES_FILE', 'sources.yaml')
+SQLITE_DB_FILE = os.getenv('SQLITE_DB_FILE', 'mcp_crawler.db')
 
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
@@ -61,20 +53,11 @@ PREDEFINED_SOURCES = {
 def get_config() -> Dict[str, Any]:
     """Return the configuration as a dictionary."""
     return {
-        "aws": {
-            "region": AWS_REGION,
-            "profile": AWS_PROFILE,
-            "dynamodb_tables": {
-                "tools": DYNAMODB_TOOLS_TABLE,
-                "sources": DYNAMODB_SOURCES_TABLE,
-                "crawlers": DYNAMODB_CRAWLERS_TABLE,
-                "crawl_results": DYNAMODB_CRAWL_RESULTS_TABLE,
-            },
-            "s3": {
-                "bucket_name": S3_BUCKET_NAME,
-                "tool_catalog_key": "tools.json",
-                "source_list_key": S3_SOURCE_LIST_KEY,
-            },
+        "local": {
+            "data_dir": DATA_DIR,
+            "tools_file": os.path.join(DATA_DIR, TOOLS_FILE),
+            "source_list_path": os.path.join(DATA_DIR, SOURCES_FILE),
+            "sqlite_db_file": os.path.join(DATA_DIR, SQLITE_DB_FILE),
         },
         "openai": {
             "api_key": OPENAI_API_KEY,
@@ -93,3 +76,4 @@ def get_config() -> Dict[str, Any]:
             "level": LOG_LEVEL,
         },
     }
+

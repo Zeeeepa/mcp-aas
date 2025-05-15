@@ -1,175 +1,289 @@
+"""
+Crawler generator module for MCP tool crawler.
+
+This module generates crawlers for sources that don't have a known crawler.
+"""
+
 import json
 import os
 import time
-import uuid
+from typing import Dict, Any, List, Optional
+
+from ..models import Source, SourceType
+from ..utils.logging import get_logger
+from ..utils.config import get_config
+
+logger = get_logger(__name__)
+config = get_config()
+
+
+def generate_crawler_for_source(source: Source) -> Optional[str]:
+    """
+    Generate a crawler for a source.
+    
+    Args:
+        source: Source to generate a crawler for.
+        
+    Returns:
+        Generated crawler code as a string, or None if generation failed.
+    """
+    logger.info(f"Generating crawler for source: {source.name} ({source.url})")
+    
+    # This is a placeholder for the actual crawler generation logic
+    # In a real implementation, this would use OpenAI or another LLM to generate the crawler
+    
+    # For now, return a simple template crawler
+    if source.type == SourceType.GITHUB_AWESOME_LIST:
+        return _generate_github_awesome_list_crawler(source)
+    elif source.type == SourceType.GITHUB_REPOSITORY:
+        return _generate_github_repository_crawler(source)
+    elif source.type == SourceType.WEBSITE:
+        return _generate_website_crawler(source)
+    else:
+        logger.warning(f"Unsupported source type for crawler generation: {source.type}")
+        return None
+
+
+def _generate_github_awesome_list_crawler(source: Source) -> str:
+    """
+    Generate a crawler for a GitHub awesome list.
+    
+    Args:
+        source: Source to generate a crawler for.
+        
+    Returns:
+        Generated crawler code as a string.
+    """
+    return f"""
+import re
 import requests
-from datetime import datetime
-import logging
-from typing import Dict, Any
+from bs4 import BeautifulSoup
+from typing import List, Dict, Any
 
-import boto3
-from openai import OpenAI
-
-from ..models import Source, CrawlerStrategy, SourceType
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-# Initialize OpenAI client
-openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-
-# Initialize DynamoDB client
-dynamodb = boto3.resource('dynamodb')
-crawler_table = dynamodb.Table(os.environ.get('DYNAMODB_CRAWLERS_TABLE', 'mcp-crawlers'))
-
-
-def generate_crawler_for_website(source: Source) -> CrawlerStrategy:
-    """
-    Generate a crawler strategy for a website using AI.
+def crawl() -> List[Dict[str, Any]]:
+    \"\"\"
+    Crawl the GitHub awesome list at {source.url} and extract MCP tools.
     
-    This function:
-    1. Fetches the website content
-    2. Uses OpenAI to analyze the content and generate a Python function
-    3. Returns a crawler strategy with the generated function
-    """
-    logger.info(f"Generating crawler for {source.url}")
-    start_time = time.time()
+    Returns:
+        List of MCP tools.
+    \"\"\"
+    # Fetch the page
+    response = requests.get("{source.url}")
+    response.raise_for_status()
     
-    try:
-        # Fetch the website content
-        headers = {"User-Agent": "MCP-Tool-Crawler/1.0"}
-        response = requests.get(source.url, headers=headers, timeout=30)
-        response.raise_for_status()
-        html = response.text[:20000]  # Limit to first 20k chars
+    # Parse the HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find all links in the README
+    tools = []
+    
+    # Find the README content
+    readme = soup.find('article', class_='markdown-body')
+    if not readme:
+        return []
+    
+    # Find all links in the README
+    for link in readme.find_all('a'):
+        # Skip links without href
+        if not link.get('href'):
+            continue
         
-        # Use OpenAI to generate a crawler function
-        logger.info(f"Calling OpenAI to generate crawler for {source.url}")
+        # Skip relative links
+        href = link.get('href')
+        if not href.startswith('http'):
+            continue
         
-        completion = openai_client.chat.completions.create(
-            model=os.environ.get('OPENAI_MODEL', 'gpt-4'),
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are an expert web scraper. Your task is to generate a Python function that can extract MCP (Machine Context Protocol) tools from a webpage.
-                    
-                    The function should analyze the HTML structure, identify patterns, and extract tool information (name, description, URL).
-                    
-                    The function should:
-                    1. Take the HTML content as input
-                    2. Use BeautifulSoup for HTML parsing
-                    3. Return a list of dictionaries with {'name': str, 'description': str, 'url': str} format
-                    4. Focus on finding MCP tools which are AI-related tools that help with context windows, retrieval, embeddings, etc.
-                    5. Be robust to handle variations in the page structure
-                    
-                    The function should be named "extract_tools" and have this signature:
-                    
-                    ```python
-                    def extract_tools(html: str) -> list:
-                        # Your code here
-                        return [{'name': '...', 'description': '...', 'url': '...'}]
-                    ```
-                    
-                    Please analyze the HTML and identify the pattern used to list tools or resources on the page."""
-                },
-                {
-                    "role": "user",
-                    "content": f"Generate a crawler function for the website: {source.url}\n\nHTML preview:\n{html[:10000]}"
-                }
-            ],
-            temperature=0.2,
-        )
+        # Skip links to GitHub itself
+        if href.startswith('https://github.com/') and '//' in href[19:]:
+            continue
         
-        # Extract the function code from the response
-        assistant_message = completion.choices[0].message.content
+        # Get the link text
+        name = link.text.strip()
+        if not name:
+            continue
         
-        # Look for Python code blocks in the response
-        import re
-        code_block_pattern = r'```python\s*(def extract_tools.*?)```'
-        code_blocks = re.findall(code_block_pattern, assistant_message, re.DOTALL)
+        # Get the description (text after the link until the next tag)
+        description = ''
+        next_node = link.next_sibling
+        while next_node and not (hasattr(next_node, 'name') and next_node.name in ['a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+            if hasattr(next_node, 'strip'):
+                description += next_node.strip()
+            next_node = next_node.next_sibling
         
-        if not code_blocks:
-            # Try without the python prefix
-            code_block_pattern = r'```\s*(def extract_tools.*?)```'
-            code_blocks = re.findall(code_block_pattern, assistant_message, re.DOTALL)
+        # Clean up description
+        description = re.sub(r'^[\\s\\-:]+', '', description).strip()
         
-        if not code_blocks:
-            # Fall back to finding the function declaration
-            code_block_pattern = r'(def extract_tools.*?)(?:```|$)'
-            code_blocks = re.findall(code_block_pattern, assistant_message, re.DOTALL)
-        
-        if not code_blocks:
-            raise ValueError("Could not extract a valid crawler function from the OpenAI response")
-        
-        # Use the first code block found
-        function_code = code_blocks[0].strip()
-        
-        # TODO: In a real implementation, we would validate the function here by executing it
-        # in a sandbox environment to ensure it works correctly
-        
-        # Create the crawler strategy
-        timestamp = datetime.utcnow().isoformat()
-        
-        strategy = CrawlerStrategy(
-            id=f"crawler-{uuid.uuid4()}",
-            source_id=source.id,
-            source_type=source.type,
-            implementation=function_code,
-            description=f"AI-generated crawler for {source.name}",
-            created=timestamp,
-            last_modified=timestamp
-        )
-        
-        # TODO: Save the strategy to DynamoDB
-        
-        logger.info(f"Successfully generated crawler for {source.url} in {time.time() - start_time:.2f}s")
-        return strategy
-        
-    except Exception as e:
-        logger.error(f"Error generating crawler for {source.url}: {str(e)}")
-        raise
+        # Add the tool
+        tools.append({{
+            'name': name,
+            'description': description,
+            'url': href,
+            'source_url': "{source.url}",
+        }})
+    
+    return tools
+"""
 
 
-def lambda_handler(event, context):
+def _generate_github_repository_crawler(source: Source) -> str:
     """
-    AWS Lambda handler for the crawler generator.
+    Generate a crawler for a GitHub repository.
     
-    Input event should contain a 'source' object that represents the source to crawl.
+    Args:
+        source: Source to generate a crawler for.
+        
+    Returns:
+        Generated crawler code as a string.
     """
-    logger.info(f"Received event: {json.dumps(event)}")
+    return f"""
+import requests
+from typing import List, Dict, Any
+
+def crawl() -> List[Dict[str, Any]]:
+    \"\"\"
+    Crawl the GitHub repository at {source.url} and extract MCP tools.
     
-    try:
-        # Parse the source from the event
-        source_data = event.get('source', {})
-        source = Source(
-            id=source_data.get('id'),
-            url=source_data.get('url'),
-            name=source_data.get('name'),
-            type=SourceType(source_data.get('type')),
-            has_known_crawler=source_data.get('has_known_crawler', False),
-            crawler_id=source_data.get('crawler_id')
-        )
+    Returns:
+        List of MCP tools.
+    \"\"\"
+    # This is a simple crawler that just returns the repository itself as a tool
+    # In a real implementation, this would analyze the repository to find MCP tools
+    
+    # Extract owner and repo from URL
+    parts = "{source.url}".split('/')
+    owner = parts[-2]
+    repo = parts[-1]
+    
+    # Fetch repository information from GitHub API
+    api_url = f"https://api.github.com/repos/{{owner}}/{{repo}}"
+    headers = {{"Accept": "application/vnd.github.v3+json"}}
+    
+    # Add GitHub token if available
+    github_token = "{config['github']['token']}"
+    if github_token:
+        headers["Authorization"] = f"token {{github_token}}"
+    
+    response = requests.get(api_url, headers=headers)
+    response.raise_for_status()
+    
+    repo_data = response.json()
+    
+    # Create a tool from the repository
+    return [{{
+        'name': repo_data['name'],
+        'description': repo_data['description'] or '',
+        'url': repo_data['html_url'],
+        'source_url': "{source.url}",
+    }}]
+"""
+
+
+def _generate_website_crawler(source: Source) -> str:
+    """
+    Generate a crawler for a website.
+    
+    Args:
+        source: Source to generate a crawler for.
         
-        # Generate the crawler
-        strategy = generate_crawler_for_website(source)
+    Returns:
+        Generated crawler code as a string.
+    """
+    return f"""
+import requests
+from bs4 import BeautifulSoup
+from typing import List, Dict, Any
+
+def crawl() -> List[Dict[str, Any]]:
+    \"\"\"
+    Crawl the website at {source.url} and extract MCP tools.
+    
+    Returns:
+        List of MCP tools.
+    \"\"\"
+    # Fetch the page
+    response = requests.get("{source.url}")
+    response.raise_for_status()
+    
+    # Parse the HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find all links
+    tools = []
+    for link in soup.find_all('a'):
+        # Skip links without href
+        if not link.get('href'):
+            continue
         
-        # Convert to dict for JSON serialization
-        return {
-            'statusCode': 200,
-            'body': {
-                'id': strategy.id,
-                'source_id': strategy.source_id,
-                'source_type': strategy.source_type,
-                'implementation': strategy.implementation,
-                'description': strategy.description,
-                'created': strategy.created,
-                'last_modified': strategy.last_modified
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error in lambda_handler: {str(e)}")
-        return {
-            'statusCode': 500,
-            'body': {
-                'error': str(e)
-            }
-        }
+        # Get the link text
+        name = link.text.strip()
+        if not name:
+            continue
+        
+        # Get the href
+        href = link.get('href')
+        
+        # Make absolute URL if relative
+        if not href.startswith('http'):
+            if href.startswith('/'):
+                href = "{source.url.rstrip('/')}" + href
+            else:
+                href = "{source.url.rstrip('/')}/" + href
+        
+        # Add the tool
+        tools.append({{
+            'name': name,
+            'description': '',  # No description available
+            'url': href,
+            'source_url': "{source.url}",
+        }})
+    
+    return tools
+"""
+
+
+def save_crawler_to_file(source_id: str, crawler_code: str) -> str:
+    """
+    Save a crawler to a file.
+    
+    Args:
+        source_id: ID of the source.
+        crawler_code: Crawler code to save.
+        
+    Returns:
+        Path to the saved crawler file.
+    """
+    # Create crawlers directory if it doesn't exist
+    crawlers_dir = os.path.join(config['local']['data_dir'], 'crawlers')
+    os.makedirs(crawlers_dir, exist_ok=True)
+    
+    # Save crawler to file
+    crawler_path = os.path.join(crawlers_dir, f"{source_id}.py")
+    with open(crawler_path, 'w', encoding='utf-8') as f:
+        f.write(crawler_code)
+    
+    logger.info(f"Saved crawler for source {source_id} to {crawler_path}")
+    return crawler_path
+
+
+def load_crawler_from_file(source_id: str) -> Optional[str]:
+    """
+    Load a crawler from a file.
+    
+    Args:
+        source_id: ID of the source.
+        
+    Returns:
+        Crawler code as a string, or None if the crawler doesn't exist.
+    """
+    crawler_path = os.path.join(config['local']['data_dir'], 'crawlers', f"{source_id}.py")
+    
+    if not os.path.exists(crawler_path):
+        logger.warning(f"No crawler found for source {source_id}")
+        return None
+    
+    with open(crawler_path, 'r', encoding='utf-8') as f:
+        crawler_code = f.read()
+    
+    logger.info(f"Loaded crawler for source {source_id} from {crawler_path}")
+    return crawler_code
+

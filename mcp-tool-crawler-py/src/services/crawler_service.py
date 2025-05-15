@@ -11,6 +11,7 @@ from ..utils.logging import get_logger
 from ..utils.config import get_config
 from .source_manager import SourceManager
 from ..storage import get_storage
+from ..lambda_functions.run_generated_crawler import run_crawler
 
 logger = get_logger(__name__)
 config = get_config()
@@ -41,11 +42,8 @@ class CrawlerService:
         logger.info(f"Crawling source: {source.name} ({source.url})")
         
         try:
-            # Get the appropriate crawler for this source
-            crawler = get_crawler_for_source(source)
-            
-            # Execute the crawler
-            result = crawler.execute()
+            # Run the crawler
+            result = await run_crawler(source)
             
             # Update the source's last crawl time
             await self.source_manager.update_source_last_crawl(source.id, result.success)
@@ -122,3 +120,4 @@ class CrawlerService:
         logger.info(f"- Updated tools: {total_updated_tools}")
         
         return results
+
