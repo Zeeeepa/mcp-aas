@@ -14,18 +14,23 @@ dotenv_path = Path(__file__).parents[2] / '.env'
 if dotenv_path.exists():
     load_dotenv(dotenv_path)
 
-# AWS Configuration
+# Storage Configuration
+STORAGE_TYPE = os.getenv('STORAGE_TYPE', 'sqlite')  # 'sqlite' or 'aws'
+SQLITE_DB_PATH = os.getenv('SQLITE_DB_PATH', './data/mcp_crawler.db')
+LOCAL_STORAGE_PATH = os.getenv('LOCAL_STORAGE_PATH', './data')
+
+# AWS Configuration (legacy)
 AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
 AWS_PROFILE = os.getenv('AWS_PROFILE', 'default')
 
-# AWS Resources
+# AWS Resources (legacy)
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'mcp-tool-catalog')
 DYNAMODB_TOOLS_TABLE = os.getenv('DYNAMODB_TOOLS_TABLE', 'mcp-tools')
 DYNAMODB_SOURCES_TABLE = os.getenv('DYNAMODB_SOURCES_TABLE', 'mcp-sources')
 DYNAMODB_CRAWLERS_TABLE = os.getenv('DYNAMODB_CRAWLERS_TABLE', 'mcp-crawlers')
 DYNAMODB_CRAWL_RESULTS_TABLE = os.getenv('DYNAMODB_CRAWL_RESULTS_TABLE', 'mcp-crawl-results')
 
-# S3 Source List Configuration
+# S3 Source List Configuration (legacy)
 S3_SOURCE_LIST_KEY = os.getenv('S3_SOURCE_LIST_KEY', 'sources.yaml')
 
 # OpenAI Configuration
@@ -60,7 +65,14 @@ PREDEFINED_SOURCES = {
 
 def get_config() -> Dict[str, Any]:
     """Return the configuration as a dictionary."""
-    return {
+    config = {
+        "storage_type": STORAGE_TYPE,
+        "sqlite": {
+            "db_path": SQLITE_DB_PATH,
+        },
+        "local_storage": {
+            "path": LOCAL_STORAGE_PATH,
+        },
         "aws": {
             "region": AWS_REGION,
             "profile": AWS_PROFILE,
@@ -93,3 +105,5 @@ def get_config() -> Dict[str, Any]:
             "level": LOG_LEVEL,
         },
     }
+    
+    return config

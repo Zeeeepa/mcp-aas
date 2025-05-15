@@ -4,7 +4,7 @@ A platform that allows users to launch and use Model Context Protocol (MCP) tool
 
 ## Project Overview
 
-MCP-aaS is a cloud-based platform that provides:
+MCP-aaS is a platform that provides:
 - On-demand access to MCP tools
 - User authentication and tool management
 - WebSocket connections to tools
@@ -15,32 +15,32 @@ MCP-aaS is a cloud-based platform that provides:
 This monorepo contains:
 - `frontend/`: React-based frontend code
 - `backend/`: Node.js/Express backend services
-- `infrastructure/`: AWS CDK code for infrastructure deployment
+- `infrastructure/`: Infrastructure deployment code
 - `shared/`: Shared libraries and utilities
+- `mcp-tool-crawler-py/`: Python-based tool for discovering and cataloging MCP tools
 
 ## Key Features
 
 ### Authentication System
 
-The platform uses AWS Cognito for authentication:
+The platform uses authentication for:
 - User registration with email verification
 - Secure login with JWT tokens
 - Password reset functionality
 - User profile management
 
 Authentication is implemented using:
-- AWS Cognito User Pools and Identity Pools
-- AWS Amplify on the frontend
-- AWS SDK on the backend
-- Serverless infrastructure managed with AWS CDK
+- JWT tokens
+- Secure password hashing
+- User profile management in SQLite database
 
 ## Development
 
 ### Prerequisites
 - Node.js 18+
 - Docker
-- AWS CLI (for deployment)
-- AWS CDK CLI (for infrastructure deployment)
+- Python 3.8+ (for MCP Tool Crawler)
+- SQLite 3.x (included with Python)
 
 ### Setup
 1. Clone the repository
@@ -54,6 +54,9 @@ cd frontend && npm install
 
 # Install backend dependencies
 cd backend && npm install
+
+# Install MCP Tool Crawler dependencies
+cd mcp-tool-crawler-py && pip install -e .
 ```
 
 ### Configuration
@@ -61,29 +64,22 @@ Create environment variables for both frontend and backend:
 
 **Frontend (.env)**
 ```
-REACT_APP_COGNITO_REGION=us-east-1
-REACT_APP_COGNITO_USER_POOL_ID=your-user-pool-id
-REACT_APP_COGNITO_USER_POOL_WEB_CLIENT_ID=your-client-id
-REACT_APP_COGNITO_IDENTITY_POOL_ID=your-identity-pool-id
+REACT_APP_API_URL=http://localhost:4000
+REACT_APP_WS_URL=ws://localhost:4000
 ```
 
 **Backend (.env)**
 ```
 PORT=4000
-AWS_REGION=us-east-1
-COGNITO_USER_POOL_ID=your-user-pool-id
-COGNITO_CLIENT_ID=your-client-id
+JWT_SECRET=your-jwt-secret
+SQLITE_DB_PATH=./data/mcp_aas.db
 ```
 
-### Infrastructure Deployment
-1. Navigate to the infrastructure/cdk directory
-2. Install dependencies
-```bash
-npm install
+**MCP Tool Crawler (.env)**
 ```
-3. Deploy the AWS resources
-```bash
-npx cdk deploy --all
+STORAGE_TYPE=sqlite
+SQLITE_DB_PATH=./data/mcp_crawler.db
+LOCAL_STORAGE_PATH=./data
 ```
 
 ### Running Locally
@@ -114,13 +110,15 @@ docker-compose down
 ```
 
 ## Deployment
-See the documentation in the `infrastructure/` directory for detailed deployment instructions.
+See the documentation in the `deployment/` directory for detailed deployment instructions.
 
-The application is deployed using:
-- GitHub Actions for CI/CD
+The application can be deployed using:
 - Docker containers
-- AWS ECS (Elastic Container Service)
-- AWS CDK for infrastructure as code
+- Manual deployment to a server
+- GitHub Actions for CI/CD
+
+## Migration from AWS
+If you're migrating from the AWS-based version to the local storage version, please see the [Migration Guide](MIGRATION_GUIDE.md) for detailed instructions.
 
 ## Contributing
 Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines.

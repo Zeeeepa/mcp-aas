@@ -1,10 +1,10 @@
 # MCP Tool Crawler
 
-A Python-based service for discovering, crawling, and cataloging Machine Context Protocol (MCP) tools from various sources. The crawler leverages AWS Step Functions and AI-powered code generation to automatically extract MCP tools from diverse sources.
+A Python-based service for discovering, crawling, and cataloging Machine Context Protocol (MCP) tools from various sources. The crawler leverages local storage and AI-powered code generation to automatically extract MCP tools from diverse sources.
 
 ## Source List Management
 
-Sources to crawl are managed in a YAML file (`sample-sources.yaml`) which is uploaded to S3 when changes are pushed to GitHub.
+Sources to crawl are managed in a YAML file (`sources.yaml`) which is stored in the local data directory.
 
 ### YAML Format
 
@@ -32,98 +32,10 @@ Fields:
 
 ### Workflow
 
-1. Edit the `sample-sources.yaml` file with the sources you want to crawl
-2. Commit and push the changes to the `main` branch
-3. GitHub Actions workflow will upload the file to S3
-4. S3 event will trigger the Step Function
-5. Step Function will process the sources and discover tools
-
-## GitHub Actions Setup
-
-To enable the GitHub Actions workflow for uploading the source list:
-
-1. Add the following secrets to your GitHub repository:
-   - `AWS_ACCESS_KEY_ID`: AWS access key ID
-   - `AWS_SECRET_ACCESS_KEY`: AWS secret access key
-   - `S3_BUCKET_NAME`: Name of the S3 bucket to store the source list
-
-## AsyncAPI Specification
-
-The Step Function execution can be triggered via S3 events. Below is an AsyncAPI specification describing this event-driven API:
-
-```yaml
-asyncapi: 2.6.0
-info:
-  title: MCP Tool Crawler API
-  version: 1.0.0
-  description: Async API for the MCP Tool Crawler service
-
-channels:
-  s3/sourceListUpdated:
-    publish:
-      summary: Event published when a source list is updated in S3
-      operationId: sourceListUpdated
-      message:
-        $ref: '#/components/messages/SourceListUpdated'
-  
-  stepFunctions/workflowCompleted:
-    subscribe:
-      summary: Event published when a crawler workflow is completed
-      operationId: workflowCompleted
-      message:
-        $ref: '#/components/messages/WorkflowCompleted'
-
-components:
-  messages:
-    SourceListUpdated:
-      name: sourceListUpdated
-      title: Source List Updated
-      summary: Indicates that a source list was updated in S3
-      contentType: application/json
-      payload:
-        type: object
-        properties:
-          s3BucketName:
-            type: string
-            description: Name of the S3 bucket containing the updated source list
-          s3SourceListKey:
-            type: string
-            description: Key of the source list file in S3
-          timestamp:
-            type: string
-            format: date-time
-            description: Time when the update occurred
-    
-    WorkflowCompleted:
-      name: workflowCompleted
-      title: Workflow Completed
-      summary: Sent when a step function workflow completes
-      contentType: application/json
-      payload:
-        type: object
-        properties:
-          executionArn:
-            type: string
-            description: ARN of the Step Function execution
-          status:
-            type: string
-            enum: [SUCCEEDED, FAILED, TIMED_OUT, ABORTED]
-            description: Status of the execution
-          startDate:
-            type: string
-            format: date-time
-            description: Start time of the execution
-          stopDate:
-            type: string
-            format: date-time
-            description: End time of the execution
-          input:
-            type: object
-            description: Input provided to the Step Function
-          output:
-            type: object
-            description: Output from the Step Function
-```
+1. Edit the `sources.yaml` file with the sources you want to crawl
+2. Run the crawler using the CLI commands
+3. The crawler will process the sources and discover tools
+4. Results will be stored in the local SQLite database and file storage
 
 ## Project Overview
 
@@ -133,34 +45,33 @@ Key features:
 - Automated crawling of GitHub awesome lists and repositories
 - AI-powered crawler generation for unknown websites
 - Deduplication and standardization of tool information
-- Persistent storage in S3 for accessibility
-- Step Functions workflow for reliability and monitoring
+- Persistent storage in SQLite and local files for accessibility
+- Simple command-line interface for managing sources and running crawls
 
 ## Architecture
 
-The system uses a serverless architecture with the following components:
+The system uses a local architecture with the following components:
 
 ![MCP Tool Crawler Architecture](docs/images/architecture.png)
 
-1. **AWS Step Functions**: Orchestrates the entire workflow
-2. **Lambda Functions**: Executes each step of the workflow
-3. **DynamoDB**: Stores sources, crawler strategies, and metadata
-4. **S3**: Stores the consolidated tool catalog
-5. **OpenAI**: Generates custom crawlers for unknown websites
+1. **SQLite Database**: Stores sources, crawler strategies, and metadata
+2. **Local File Storage**: Stores the consolidated tool catalog
+3. **Python Modules**: Execute each step of the workflow
+4. **OpenAI**: Generates custom crawlers for unknown websites
 
 ### Detailed Component Diagram
 
 ```mermaid
 flowchart TD
-    SF[AWS Step Functions] --> SM & CL & CP
-    SM[Source Management Lambda] --> DB[(DynamoDB\nSources & Crawlers)]
-    CL[Crawler Lambda] --> OAI[OpenAI API]
-    CP[Catalog Processing Lambda] --> S3[(S3\nTool Catalog)]
+    CLI[Command Line Interface] --> SM & CL & CP
+    SM[Source Management] --> DB[(SQLite Database)]
+    CL[Crawler Logic] --> OAI[OpenAI API]
+    CP[Catalog Processing] --> FS[(Local File Storage)]
 ```
 
 ### Workflow Overview
 
-The system follows a multi-step workflow managed by AWS Step Functions:
+The system follows a multi-step workflow:
 
 ![MCP Tool Crawler Workflow](docs/images/workflow.png)
 
@@ -215,11 +126,11 @@ flowchart LR
 - **Crawlers**: Components responsible for extracting tools from sources
 - **Crawler Strategies**: AI-generated code to extract tools from specific websites
 
-### Lambda Functions
+### Python Modules
 
-| Function | Description |
-|----------|-------------|
-| Source Manager | Initializes and manages sources in DynamoDB |
+| Module | Description |
+|----------|----------------|
+| Source Manager | Initializes and manages sources in SQLite |
 | Crawler Generator | Uses OpenAI to generate custom crawlers |
 | Known Crawler Runner | Runs built-in crawlers (GitHub, RSS, etc.) |
 | Generated Crawler Runner | Safely executes AI-generated crawlers |
@@ -309,37 +220,10 @@ pytest tests/test_github_crawler.py
 pytest --cov=src
 ```
 
-## Deployment
-
-### Packaging Lambda Functions
-
-```bash
-# Package Lambda functions with Poetry
-poetry run ./scripts/package_lambda.sh
-
-# Traditional method
-./scripts/package_lambda.sh
-```
-
-### Deploying with Terraform
-
-```bash
-# Initialize Terraform
-cd infrastructure/terraform
-terraform init
-
-# Plan the deployment
-terraform plan -var-file=environments/dev.tfvars
-
-# Apply the deployment
-terraform apply -var-file=environments/dev.tfvars
-```
-
 ## Security Considerations
 
 - **Sandboxing**: AI-generated code is executed in a restricted sandbox using RestrictedPython
 - **Input Validation**: All user inputs and API responses are validated
-- **IAM Best Practices**: Least privilege access for all AWS services
 - **Rate Limiting**: API throttling for external dependencies
 - **Logging & Monitoring**: Comprehensive logging and monitoring
 
@@ -349,4 +233,3 @@ terraform apply -var-file=environments/dev.tfvars
 - **Web UI**: Management interface for sources and tools
 - **Additional Sources**: Support for more types of sources
 - **Enhanced Metadata**: Extract and normalize more tool metadata
-- **CI/CD Pipeline**: Automated testing and deployment
