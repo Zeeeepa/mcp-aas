@@ -1,22 +1,25 @@
 # Core requirements
-boto3==1.29.0
 requests==2.31.0
 beautifulsoup4==4.12.2
 openai==1.3.0
 python-dotenv==1.0.0
 pydantic==2.4.2
+pyyaml==6.0.1
+watchdog==3.0.0
 
 # For executing crawler code safely
 RestrictedPython==6.2
 
-# AWS Lambda specific
-aws-lambda-powertools==2.26.0
-
 # Development requirements
 pytest==7.4.3
 pytest-mock==3.12.0
-moto==4.2.6
 black==23.10.1
 isort==5.12.0
 mypy==1.6.1
 flake8==6.1.0
+
+# Optional AWS dependencies (for backward compatibility)
+boto3==1.29.0
+aws-lambda-powertools==2.26.0
+moto==4.2.6
+
