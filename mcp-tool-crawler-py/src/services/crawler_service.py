@@ -9,7 +9,7 @@ from ..models import Source, MCPTool, CrawlResult
 from ..crawlers import get_crawler_for_source
 from ..utils.logging import get_logger
 from ..utils.config import get_config
-from .source_manager import SourceManager
+from . import get_source_manager
 from ..storage import get_storage
 
 logger = get_logger(__name__)
@@ -25,7 +25,7 @@ class CrawlerService:
         """
         Initialize the crawler service.
         """
-        self.source_manager = SourceManager()
+        self.source_manager = get_source_manager()
         self.storage = get_storage()
     
     async def crawl_source(self, source: Source) -> CrawlResult:

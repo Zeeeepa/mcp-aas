@@ -5,6 +5,7 @@ Local file storage service for MCP tools and sources.
 import json
 import os
 import yaml
+
 import shutil
 import time
 import fcntl
@@ -13,6 +14,7 @@ from typing import List, Dict, Any, Optional, Union
 
 from ..models import MCPTool, Source, SourceType
 from ..utils.logging import get_logger
+
 from ..utils.config import get_config
 from ..utils.helpers import is_github_repo, extract_domain
 
@@ -26,17 +28,23 @@ class LocalStorage:
     Provides functionality similar to S3Storage but using the local filesystem.
     """
     
-    def __init__(self, file_path: Optional[str] = None):
+    def __init__(self, file_path: Optional[str] = None, source_list_path: Optional[str] = None):
         """
         Initialize the local storage service.
         
         Args:
             file_path: Path to the file to store tools in. If None, uses the default path.
+            source_list_path: Path to the file to store sources in. If None, uses the default path.
         """
         if file_path:
             self.file_path = Path(file_path)
         else:
             self.file_path = Path(__file__).parents[3] / 'data' / 'tools.json'
+        
+        if source_list_path:
+            self.source_list_path = Path(source_list_path)
+        else:
+            self.source_list_path = Path(__file__).parents[3] / 'data' / 'sources.yaml'
         
         # Ensure data directory exists
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -130,6 +138,9 @@ class LocalStorage:
             logger.error(f"Error loading tools from local file: {str(e)}")
             return []
     
+    async def load_sources(self) -> List[Source]:
+        """
+        Load sources from a local YAML file.
     async def _recover_from_backup(self) -> List[MCPTool]:
         """
         Attempt to recover tools from the most recent backup.
@@ -202,6 +213,14 @@ class LocalSourceStorage:
         """
         try:
             # Check if file exists
+            if not self.source_list_path.exists():
+                logger.warning(f"No source list found at {self.source_list_path}")
+                return []
+            
+            # Read file
+            with open(self.source_list_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            
             if not self.file_path.exists():
                 logger.warning(f"No source list found at {self.file_path}")
                 return []
@@ -262,6 +281,11 @@ class LocalSourceStorage:
                 
                 sources.append(source)
             
+            logger.info(f"Loaded {len(sources)} sources from {self.source_list_path}")
+            return sources
+        except Exception as e:
+            logger.error(f"Error loading sources from local file: {str(e)}")
+            return []
             logger.info(f"Loaded {len(sources)} sources from {self.file_path}")
             return sources
         except yaml.YAMLError as e:

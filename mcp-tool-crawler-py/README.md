@@ -2,6 +2,18 @@
 
 A tool for crawling and cataloging MCP (Model Context Protocol) tools from various sources.
 
+## Storage Options
+
+The MCP Tool Crawler supports multiple storage backends:
+
+1. **SQLite Storage** (default): Local SQLite database for storing tools, sources, and crawler data
+2. **Local Storage**: Simple JSON file-based storage for tools
+3. **S3 Storage**: AWS S3-based storage for production environments
+
+See [SQLite Storage Documentation](SQLITE_STORAGE.md) for details on the SQLite implementation.
+
+## Source List Management
+
 ## Overview
 
 The MCP Tool Crawler discovers and catalogs tools that implement the Model Context Protocol from various sources, including GitHub repositories, awesome lists, and websites. It stores the discovered tools in a local SQLite database and provides a command-line interface for managing the crawling process.
@@ -106,4 +118,10 @@ flake8 src tests
 ## License
 
 [MIT](LICENSE)
+
+- **Advanced Deduplication**: ML-based similarity detection for tools
+- **Web UI**: Management interface for sources and tools
+- **Additional Sources**: Support for more types of sources
+- **Enhanced Metadata**: Extract and normalize more tool metadata
+- **CI/CD Pipeline**: Automated testing and deployment
 
