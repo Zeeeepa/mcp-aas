@@ -10,6 +10,7 @@ from ..models import Source, SourceType
 from ..utils.logging import get_logger
 from ..utils.config import get_config
 from ..utils.helpers import is_github_repo, extract_domain
+from ..storage import get_source_storage
 
 logger = get_logger(__name__)
 config = get_config()
@@ -25,8 +26,7 @@ class SourceManager:
         Initialize the source manager.
         """
         # Initialize storage
-        from ..storage.sqlite_storage import SQLiteSourceStorage
-        self.storage = SQLiteSourceStorage()
+        self.storage = get_source_storage()
     
     async def initialize_sources(self) -> List[Source]:
         """
@@ -36,7 +36,7 @@ class SourceManager:
         1. The local source list file if available
         2. Predefined sources from configuration (as fallback)
         
-        Sources are added to SQLite storage for tracking.
+        Sources are added to storage for tracking.
         
         Returns:
             List of all sources (existing + newly added).
@@ -47,15 +47,15 @@ class SourceManager:
         existing_sources = await self.get_all_sources()
         existing_urls = {source.url for source in existing_sources}
         
-        # Try to load sources from local file first
+        # Try to load sources from local storage first
         try:
-            sources = await self.storage.load_sources()
+            local_sources = await self.storage.load_sources()
             
-            if sources:
-                logger.info(f"Loaded {len(sources)} sources from local storage")
+            if local_sources:
+                logger.info(f"Loaded {len(local_sources)} sources from local storage")
                 
-                # Add sources that don't already exist
-                for source in sources:
+                # Add sources from local storage that don't already exist
+                for source in local_sources:
                     if source.url not in existing_urls:
                         await self.add_source(source)
                         existing_sources.append(source)
@@ -247,5 +247,4 @@ class SourceManager:
         except Exception as e:
             logger.error(f"Error updating source last crawl: {str(e)}")
             return False
-"""
 
