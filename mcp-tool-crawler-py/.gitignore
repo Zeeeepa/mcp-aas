@@ -19,46 +19,35 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.pytest_cache/
-.coverage
-htmlcov/
 
-# Virtual Environment
+# Virtual environments
 venv/
 env/
 ENV/
 
-# IDE files
+# Testing
+.coverage
+htmlcov/
+coverage_html/
+.pytest_cache/
+.tox/
+.nox/
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Data
+data/
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# OS specific files
+# OS
 .DS_Store
 Thumbs.db
 
-# AWS SAM
-.aws-sam/
-samconfig.toml
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.backup
-*.tfvars
-.terraform.lock.hcl
-
-# Environment variables
-.env
-.env.local
-
-# Lambda deployment packages
-lambda_packages/
-
-# Logs
-logs/
-*.log
-
-# Local data
-data/

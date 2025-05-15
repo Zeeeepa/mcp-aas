@@ -1,31 +1,34 @@
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
-with open("requirements.txt", "r", encoding="utf-8") as f:
-    requirements = f.read().splitlines()
-
 setup(
-    name="mcp_tool_crawler",
+    name="mcp-tool-crawler",
     version="0.1.0",
-    author="MCP Team",
-    author_email="team@mcp-aas.com",
-    description="A tool for discovering and cataloging MCP tools",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/organization/mcp-tool-crawler",
     packages=find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
+    install_requires=[
+        "requests>=2.31.0",
+        "beautifulsoup4>=4.12.2",
+        "openai>=1.3.0",
+        "python-dotenv>=1.0.0",
+        "pydantic>=2.4.2",
+        "RestrictedPython>=6.2",
+        "pyyaml>=6.0",
     ],
-    python_requires=">=3.8",
-    install_requires=requirements,
-    entry_points={
-        "console_scripts": [
-            "mcp-crawler=src.cli:main",
+    extras_require={
+        "dev": [
+            "pytest>=7.4.3",
+            "pytest-mock>=3.12.0",
+            "pytest-asyncio>=0.21.1",
+            "coverage>=7.3.2",
+            "pytest-cov>=4.1.0",
+            "black>=23.10.1",
+            "isort>=5.12.0",
+            "mypy>=1.6.1",
+            "flake8>=6.1.0",
+        ],
+        "aws": [
+            "boto3>=1.29.0",
+            "aws-lambda-powertools>=2.26.0",
         ],
     },
+    python_requires=">=3.8",
 )
