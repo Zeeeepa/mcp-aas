@@ -6,13 +6,11 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional
 
-import boto3
-from boto3.dynamodb.conditions import Key, Attr
-
 from ..models import Source, SourceType
 from ..utils.logging import get_logger
 from ..utils.config import get_config
 from ..utils.helpers import is_github_repo, extract_domain
+from ..storage.sqlite_storage import SQLiteStorage
 
 logger = get_logger(__name__)
 config = get_config()
@@ -27,20 +25,18 @@ class SourceManager:
         """
         Initialize the source manager.
         """
-        # Initialize DynamoDB client
-        self.dynamodb = boto3.resource('dynamodb')
-        self.table_name = config['aws']['dynamodb_tables']['sources']
-        self.table = self.dynamodb.Table(self.table_name)
+        # Initialize SQLite storage
+        self.storage = SQLiteStorage()
     
     async def initialize_sources(self) -> List[Source]:
         """
-        Initialize sources from the configuration and S3 source list.
+        Initialize sources from the configuration and local source list.
         
         This loads sources from:
-        1. The S3 source list file if available
+        1. The local source list file if available
         2. Predefined sources from configuration (as fallback)
         
-        Sources are added to DynamoDB storage for tracking.
+        Sources are added to SQLite storage for tracking.
         
         Returns:
             List of all sources (existing + newly added).
@@ -51,29 +47,29 @@ class SourceManager:
         existing_sources = await self.get_all_sources()
         existing_urls = {source.url for source in existing_sources}
         
-        # Try to load sources from S3 first
+        # Try to load sources from local file first
         try:
-            from ..storage.s3_storage import S3SourceStorage
-            s3_source_storage = S3SourceStorage()
-            s3_sources = await s3_source_storage.load_sources()
+            from ..storage.local_storage import LocalStorage
+            local_source_storage = LocalStorage(file_path=config.get('local', {}).get('source_list_path'))
+            local_sources = await local_source_storage.load_sources()
             
-            if s3_sources:
-                logger.info(f"Loaded {len(s3_sources)} sources from S3")
+            if local_sources:
+                logger.info(f"Loaded {len(local_sources)} sources from local file")
                 
-                # Add sources from S3 that don't already exist
-                for source in s3_sources:
+                # Add sources from local file that don't already exist
+                for source in local_sources:
                     if source.url not in existing_urls:
                         await self.add_source(source)
                         existing_sources.append(source)
                         existing_urls.add(source.url)
                         
-                        logger.info(f"Added new source from S3: {source.name} ({source.url})")
+                        logger.info(f"Added new source from local file: {source.name} ({source.url})")
                 
                 return existing_sources
         except Exception as e:
-            logger.warning(f"Error loading sources from S3, falling back to config: {str(e)}")
+            logger.warning(f"Error loading sources from local file, falling back to config: {str(e)}")
         
-        # If no sources from S3 or error occurred, fall back to config
+        # If no sources from local file or error occurred, fall back to config
         logger.info("Using predefined sources from configuration")
         
         # Add awesome lists from config
@@ -124,8 +120,8 @@ class SourceManager:
             The added source.
         """
         try:
-            # Save to DynamoDB
-            self.table.put_item(Item=source.dict())
+            # Save to SQLite
+            await self.storage.save_sources([source])
             logger.info(f"Added source: {source.name} ({source.url})")
             return source
         except Exception as e:
@@ -180,11 +176,8 @@ class SourceManager:
             List of all sources.
         """
         try:
-            # In a real implementation, this would use paginator for large numbers of sources
-            response = self.table.scan()
-            
-            sources = [Source(**item) for item in response.get('Items', [])]
-            logger.info(f"Retrieved {len(sources)} sources from DynamoDB")
+            sources = await self.storage.load_sources()
+            logger.info(f"Retrieved {len(sources)} sources from SQLite")
             return sources
         except Exception as e:
             logger.error(f"Error retrieving sources: {str(e)}")
@@ -202,21 +195,7 @@ class SourceManager:
             List of sources to crawl.
         """
         try:
-            # Get all sources
-            all_sources = await self.get_all_sources()
-            
-            # Calculate threshold timestamp
-            threshold_time = (datetime.now(timezone.utc) - 
-                             timedelta(hours=time_threshold_hours)).isoformat()
-            
-            # Filter sources
-            sources_to_crawl = []
-            
-            for source in all_sources:
-                # If the source has never been crawled, or was crawled before the threshold
-                if not source.last_crawled or source.last_crawled < threshold_time:
-                    sources_to_crawl.append(source)
-            
+            sources_to_crawl = await self.storage.get_sources_to_crawl(time_threshold_hours)
             logger.info(f"Found {len(sources_to_crawl)} sources to crawl")
             return sources_to_crawl
         except Exception as e:
@@ -235,18 +214,10 @@ class SourceManager:
             True if successful, False otherwise.
         """
         try:
-            # Update source
-            self.table.update_item(
-                Key={'id': source_id},
-                UpdateExpression='SET last_crawled = :timestamp, last_crawl_status = :status',
-                ExpressionAttributeValues={
-                    ':timestamp': datetime.now(timezone.utc).isoformat(),
-                    ':status': 'success' if success else 'failed',
-                },
-            )
-            
+            result = await self.storage.update_source_last_crawl(source_id, success)
             logger.info(f"Updated last crawl for source {source_id}")
-            return True
+            return result
         except Exception as e:
             logger.error(f"Error updating source last crawl: {str(e)}")
             return False
+

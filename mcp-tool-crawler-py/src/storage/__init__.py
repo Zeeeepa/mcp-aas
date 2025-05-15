@@ -7,19 +7,16 @@ from typing import List, Union
 
 from ..models import MCPTool
 from .local_storage import LocalStorage
-from .s3_storage import S3Storage
-
+from .sqlite_storage import SQLiteStorage
 
 def get_storage():
     """
     Get the appropriate storage service based on the environment.
     
-    In production, uses S3Storage, in development, uses LocalStorage.
+    Uses SQLiteStorage for both production and development environments.
     
     Returns:
         A storage service instance.
     """
-    if os.environ.get('ENVIRONMENT', 'development') == 'production':
-        return S3Storage()
-    else:
-        return LocalStorage()
+    return SQLiteStorage()
+
