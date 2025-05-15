@@ -5,7 +5,7 @@ Storage services for MCP tools.
 import os
 from typing import List, Union
 
-from ..models import MCPTool
+from ..models import MCPTool, Source
 from .local_storage import LocalStorage
 from .s3_storage import S3Storage
 from .sqlite_storage import SQLiteStorage
@@ -29,3 +29,21 @@ def get_storage():
         return LocalStorage()
     else:
         return SQLiteStorage()
+
+
+def get_source_storage():
+    """
+    Get the appropriate source storage service.
+    
+    Returns:
+        A source storage service instance.
+    """
+    env = os.environ.get('ENVIRONMENT', 'development')
+    storage_type = os.environ.get('STORAGE_TYPE', 'sqlite')
+    
+    if env == 'production' and storage_type == 's3':
+        from .s3_storage import S3SourceStorage
+        return S3SourceStorage()
+    else:
+        return SQLiteStorage()
+

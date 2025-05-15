@@ -7,11 +7,13 @@ import os
 import sys
 from pathlib import Path
 
-from .config import LOG_LEVEL
+from .config import LOG_LEVEL, get_config
+
+config = get_config()
 
 # Ensure logs directory exists
-logs_dir = Path(__file__).parents[2] / 'logs'
-logs_dir.mkdir(exist_ok=True)
+log_file_path = Path(config['logging']['file_path'])
+log_file_path.parent.mkdir(exist_ok=True)
 
 # Configure logging
 logger = logging.getLogger('mcp_tool_crawler')
@@ -22,7 +24,7 @@ console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(getattr(logging, LOG_LEVEL))
 
 # Create file handler
-file_handler = logging.FileHandler(logs_dir / 'mcp_tool_crawler.log')
+file_handler = logging.FileHandler(log_file_path)
 file_handler.setLevel(getattr(logging, LOG_LEVEL))
 
 # Create formatter
@@ -51,3 +53,5 @@ def get_logger(name: str = None) -> logging.Logger:
     if name:
         return logger.getChild(name)
     return logger
+"""
+

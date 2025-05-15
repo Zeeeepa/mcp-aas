@@ -5,19 +5,25 @@ Local file storage service for MCP tools.
 import json
 import os
 import yaml
+import shutil
+import time
+import fcntl
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from ..models import MCPTool, Source, SourceType
 from ..utils.logging import get_logger
+from ..utils.config import get_config
 from ..utils.helpers import is_github_repo, extract_domain
 
 logger = get_logger(__name__)
+config = get_config()
 
 
 class LocalStorage:
     """
     Local file storage service for MCP tools.
+    Provides functionality similar to S3Storage but using the local filesystem.
     """
     
     def __init__(self, file_path: Optional[str] = None, source_list_path: Optional[str] = None):
@@ -26,7 +32,7 @@ class LocalStorage:
         
         Args:
             file_path: Path to the file to store tools in. If None, uses the default path.
-            source_list_path: Path to the file to store sources in. If None, uses the default path.
+            source_list_path: Path to the YAML file containing sources. If None, uses the default path.
         """
         if file_path:
             self.file_path = Path(file_path)
@@ -40,6 +46,10 @@ class LocalStorage:
         
         # Ensure data directory exists
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Directory for versioned backups
+        self.backup_dir = self.file_path.parent / 'backups' / 'tools'
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
     
     async def save_tools(self, tools: List[MCPTool]) -> bool:
         """
@@ -52,12 +62,30 @@ class LocalStorage:
             True if successful, False otherwise.
         """
         try:
-            # Convert tools to JSON
-            tools_json = [tool.dict() for tool in tools]
+            # Convert tools to dict for JSON
+            tools_data = [tool.dict() for tool in tools]
             
-            # Write to file
+            # Create a backup before writing
+            if self.file_path.exists():
+                timestamp = int(time.time())
+                backup_path = self.backup_dir / f"tools_{timestamp}.json"
+                shutil.copy2(self.file_path, backup_path)
+                logger.debug(f"Created backup at {backup_path}")
+            
+            # Ensure directory exists
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write to file with exclusive lock
             with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump(tools_json, f, indent=2)
+                # Acquire an exclusive lock
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    json.dump(tools_data, f, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())  # Ensure data is written to disk
+                finally:
+                    # Release the lock
+                    fcntl.flock(f, fcntl.LOCK_UN)
             
             logger.info(f"Saved {len(tools)} tools to {self.file_path}")
             return True
@@ -70,25 +98,71 @@ class LocalStorage:
         Load tools from a local file.
         
         Returns:
-            List of tools loaded from the file.
+            List of MCPTool objects loaded from the file.
         """
         try:
             # Check if file exists
             if not self.file_path.exists():
-                logger.warning(f"No tool catalog found at {self.file_path}")
+                logger.warning(f"No tools file found at {self.file_path}")
                 return []
             
-            # Read file
+            # Read file with shared lock
             with open(self.file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+                # Acquire a shared lock
+                fcntl.flock(f, fcntl.LOCK_SH)
+                try:
+                    data = json.load(f)
+                finally:
+                    # Release the lock
+                    fcntl.flock(f, fcntl.LOCK_UN)
             
             # Convert to MCPTool objects
             tools = [MCPTool(**item) for item in data]
             
             logger.info(f"Loaded {len(tools)} tools from {self.file_path}")
             return tools
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error loading tools from {self.file_path}: {str(e)}")
+            # Try to recover from backup
+            return await self._recover_from_backup()
         except Exception as e:
             logger.error(f"Error loading tools from local file: {str(e)}")
+            return []
+    
+    async def _recover_from_backup(self) -> List[MCPTool]:
+        """
+        Attempt to recover tools from the most recent backup.
+        
+        Returns:
+            List of tools loaded from the backup, or empty list if recovery failed.
+        """
+        try:
+            # Find the most recent backup
+            backup_files = list(self.backup_dir.glob("tools_*.json"))
+            if not backup_files:
+                logger.warning("No backup files found for recovery")
+                return []
+            
+            # Sort by modification time (most recent first)
+            backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            latest_backup = backup_files[0]
+            
+            logger.info(f"Attempting recovery from backup: {latest_backup}")
+            
+            # Read the backup file
+            with open(latest_backup, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Convert to MCPTool objects
+            tools = [MCPTool(**item) for item in data]
+            
+            # Restore the backup to the main file
+            shutil.copy2(latest_backup, self.file_path)
+            
+            logger.info(f"Successfully recovered {len(tools)} tools from backup")
+            return tools
+        except Exception as e:
+            logger.error(f"Error recovering from backup: {str(e)}")
             return []
     
     async def load_sources(self) -> List[Source]:
@@ -104,10 +178,18 @@ class LocalStorage:
                 logger.warning(f"No source list found at {self.source_list_path}")
                 return []
             
-            # Read file
+            # Read file with shared lock
             with open(self.source_list_path, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
+                # Acquire a shared lock
+                fcntl.flock(f, fcntl.LOCK_SH)
+                try:
+                    content = f.read()
+                finally:
+                    # Release the lock
+                    fcntl.flock(f, fcntl.LOCK_UN)
             
+            # Parse YAML
+            data = yaml.safe_load(content)
             sources_data = data.get('sources', [])
             
             sources = []
@@ -154,6 +236,62 @@ class LocalStorage:
             
             logger.info(f"Loaded {len(sources)} sources from {self.source_list_path}")
             return sources
+        except yaml.YAMLError as e:
+            logger.error(f"YAML parse error loading sources from {self.source_list_path}: {str(e)}")
+            return []
         except Exception as e:
             logger.error(f"Error loading sources from local file: {str(e)}")
             return []
+    
+    async def save_sources(self, sources: List[Source]) -> bool:
+        """
+        Save sources to a local YAML file with file locking for concurrent access.
+        Also creates a versioned backup.
+        
+        Args:
+            sources: List of sources to save.
+            
+        Returns:
+            True if successful, False otherwise.
+        """
+        try:
+            # Convert sources to dict for YAML
+            sources_data = [source.dict() for source in sources]
+            yaml_data = {'sources': sources_data}
+            
+            # Create a temporary file
+            temp_file = self.source_list_path.with_suffix('.tmp')
+            
+            # Write to temporary file
+            with open(temp_file, 'w', encoding='utf-8') as f:
+                # Acquire an exclusive lock
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    yaml.dump(yaml_data, f, default_flow_style=False)
+                    f.flush()
+                    os.fsync(f.fileno())  # Ensure data is written to disk
+                finally:
+                    # Release the lock
+                    fcntl.flock(f, fcntl.LOCK_UN)
+            
+            # Create a backup before replacing the file
+            if self.source_list_path.exists():
+                timestamp = int(time.time())
+                backup_dir = self.source_list_path.parent / 'backups' / 'sources'
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                backup_path = backup_dir / f"sources_{timestamp}.yaml"
+                shutil.copy2(self.source_list_path, backup_path)
+                logger.debug(f"Created backup at {backup_path}")
+            
+            # Atomically replace the original file
+            os.replace(temp_file, self.source_list_path)
+            
+            logger.info(f"Saved {len(sources)} sources to {self.source_list_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving sources to local file: {str(e)}")
+            # Clean up temporary file if it exists
+            if 'temp_file' in locals() and temp_file.exists():
+                temp_file.unlink()
+            return False
+
