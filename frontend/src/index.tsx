@@ -6,8 +6,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import ToolDetails from './pages/ToolDetails';
-import Profile from './pages/Profile';
-import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
 
 // Styles
@@ -27,10 +25,6 @@ root.render(
         {/* Tool routes */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tools/:id" element={<ToolDetails />} />
-        <Route path="/profile" element={<Profile />} />
-        
-        {/* Admin route */}
-        <Route path="/admin" element={<AdminDashboard />} />
         
         {/* Not found */}
         <Route path="*" element={<NotFound />} />
@@ -38,3 +32,4 @@ root.render(
     </Router>
   </React.StrictMode>
 );
+

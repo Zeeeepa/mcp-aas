@@ -6,25 +6,22 @@ const Home: React.FC = () => {
   return (
     <PageLayout>
       <header style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '2.5rem' }}>MCP as a Service</h1>
+        <h1 style={{ fontSize: '2.5rem' }}>MCP as a Service - Local</h1>
         <p style={{ fontSize: '1.2rem' }}>
-          Launch and use Model Context Protocol tools without installing them locally
+          Launch and use Model Context Protocol tools locally
         </p>
       </header>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px' }}>
-        <Link to="/login">
-          <button style={{ marginRight: '20px' }}>Login</button>
-        </Link>
         <Link to="/dashboard">
-          <button>Try Demo</button>
+          <button>Go to Dashboard</button>
         </Link>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
         <div className="card" style={{ flex: '1 1 300px', margin: '10px' }}>
-          <h2>On-Demand Tools</h2>
-          <p>Access powerful MCP tools instantly without any installation or setup</p>
+          <h2>Local Tools</h2>
+          <p>Access powerful MCP tools without any cloud dependencies</p>
         </div>
 
         <div className="card" style={{ flex: '1 1 300px', margin: '10px' }}>
@@ -39,10 +36,11 @@ const Home: React.FC = () => {
       </div>
 
       <footer style={{ textAlign: 'center', marginTop: '40px', padding: '20px', borderTop: '1px solid var(--border-color)' }}>
-        <p>&copy; 2025 MCP-aaS</p>
+        <p>&copy; 2025 MCP-aaS Local</p>
       </footer>
     </PageLayout>
   );
 };
 
 export default Home;
+

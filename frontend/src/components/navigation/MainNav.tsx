@@ -1,22 +1,7 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../services/AuthContext';
+import { Link } from 'react-router-dom';
 
 const MainNav: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
-  const navigate = useNavigate();
-  
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-  
-  const isAdmin = user?.attributes?.['custom:roles']?.includes('admin');
-  
   return (
     <nav style={{ 
       padding: '15px 20px', 
@@ -37,44 +22,13 @@ const MainNav: React.FC = () => {
             textDecoration: 'none', 
             color: '#333'
           }}>
-            MCP-aaS
+            MCP-aaS Local
           </Link>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          {isAuthenticated ? (
-            <>
-              <Link to="/dashboard" style={{ textDecoration: 'none', color: '#333' }}>Dashboard</Link>
-              <Link to="/profile" style={{ textDecoration: 'none', color: '#333' }}>Profile</Link>
-              
-              {isAdmin && (
-                <Link to="/admin" style={{ textDecoration: 'none', color: '#333', fontWeight: 'bold' }}>Admin</Link>
-              )}
-              
-              <button 
-                onClick={handleLogout}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Logout
-              </button>
-              
-              <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>
-                {user?.username}
-              </span>
-            </>
-          ) : (
-            <>
-              <Link to="/login" style={{ textDecoration: 'none', color: '#333' }}>Login</Link>
-              <Link to="/register" style={{ textDecoration: 'none', color: '#333' }}>Register</Link>
-            </>
-          )}
+          <Link to="/dashboard" style={{ textDecoration: 'none', color: '#333' }}>Dashboard</Link>
+          <Link to="/tools" style={{ textDecoration: 'none', color: '#333' }}>Tools</Link>
         </div>
       </div>
     </nav>
@@ -82,3 +36,4 @@ const MainNav: React.FC = () => {
 };
 
 export default MainNav;
+
