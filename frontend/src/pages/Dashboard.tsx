@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Tool } from '@mcp-aas/shared';
-import { useAuth } from '../services/AuthContext';
+import { Link } from 'react-router-dom';
+import { Tool } from '../types';
+import PageLayout from '../components/layout/PageLayout';
 
 const Dashboard: React.FC = () => {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
   
-  useEffect(() => {
-    // If not authenticated, redirect to login
-    if (!isAuthenticated && !user) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, user, navigate]);
-
   useEffect(() => {
     // Fetch tools
     const fetchTools = async () => {
@@ -75,84 +66,54 @@ const Dashboard: React.FC = () => {
     window.alert(`Tool ${toolId} launched! In a real app, this would connect to the tool.`);
   };
   
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-  
   return (
-    <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>My Dashboard</h1>
+    <PageLayout>
+      <div className="container">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1>Dashboard</h1>
+        </div>
         
-        <div>
-          {user?.attributes?.['custom:roles']?.includes('admin') && (
-            <Link to="/admin">
-              <button 
-                style={{ marginRight: '10px', padding: '8px 16px', backgroundColor: '#2196f3' }}
-              >
-                Admin Dashboard
-              </button>
-            </Link>
-          )}
-          
-          <button 
-            onClick={handleLogout}
-            aria-label="Logout"
-            style={{ padding: '8px 16px' }}
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-      
-      <p className="user-welcome">Welcome to your MCP-aaS dashboard, {user?.username || 'User'}.</p>
-      
-      {loading ? (
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <p>Loading tools...</p>
-        </div>
-      ) : error ? (
-        <div style={{ backgroundColor: '#ffebee', padding: '20px', marginTop: '20px', borderRadius: '4px', color: 'var(--error-color)' }}>
-          {error}
-        </div>
-      ) : (
-        <div style={{ marginTop: '20px' }}>
-          <h2>Available Tools</h2>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
-            {tools.map(tool => (
-              <div key={tool.id} className="card">
-                <h3>{tool.name}</h3>
-                <p>{tool.description}</p>
-                <p style={{ fontSize: '0.9rem', color: '#666' }}>Version: {tool.version}</p>
-                
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                  <button onClick={() => handleLaunchTool(tool.id)}>
-                    Launch
-                  </button>
-                  
-                  <Link to={`/tools/${tool.id}`}>
-                    <button style={{ backgroundColor: 'transparent', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}>
-                      Details
-                    </button>
-                  </Link>
-                </div>
-              </div>
-            ))}
+        <p className="user-welcome">Welcome to your MCP-aaS Local dashboard.</p>
+        
+        {loading ? (
+          <div style={{ textAlign: 'center', marginTop: '40px' }}>
+            <p>Loading tools...</p>
           </div>
-        </div>
-      )}
-      
-      <div style={{ marginTop: '40px' }}>
-        <Link to="/">Back to Home</Link>
+        ) : error ? (
+          <div style={{ backgroundColor: '#ffebee', padding: '20px', marginTop: '20px', borderRadius: '4px', color: 'var(--error-color)' }}>
+            {error}
+          </div>
+        ) : (
+          <div style={{ marginTop: '20px' }}>
+            <h2>Available Tools</h2>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
+              {tools.map(tool => (
+                <div key={tool.id} className="card">
+                  <h3>{tool.name}</h3>
+                  <p>{tool.description}</p>
+                  <p style={{ fontSize: '0.9rem', color: '#666' }}>Version: {tool.version}</p>
+                  
+                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                    <button onClick={() => handleLaunchTool(tool.id)}>
+                      Launch
+                    </button>
+                    
+                    <Link to={`/tools/${tool.id}`}>
+                      <button style={{ backgroundColor: 'transparent', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}>
+                        Details
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
 export default Dashboard;
+

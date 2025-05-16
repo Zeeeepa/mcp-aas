@@ -1,54 +1,41 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  VStack,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  useToast,
-} from '@chakra-ui/react';
-import ContinuitySearch from './ContinuitySearch';
-import PageScraping from './PageScraping';
-import Testing from './Testing';
-import Validation from './Validation';
 
 export const MCPFeatures: React.FC = () => {
-  const toast = useToast();
   const [activeTab, setActiveTab] = useState(0);
 
-  return (
-    <Box p={4}>
-      <Tabs 
-        variant="enclosed" 
-        colorScheme="blue" 
-        onChange={(index) => setActiveTab(index)}
-      >
-        <TabList>
-          <Tab>Continuity Search</Tab>
-          <Tab>Page Scraping</Tab>
-          <Tab>Testing</Tab>
-          <Tab>Validation</Tab>
-        </TabList>
+  const tabs = [
+    { name: 'Continuity Search', content: 'Continuity search feature allows you to search for content across multiple pages.' },
+    { name: 'Page Scraping', content: 'Page scraping feature allows you to extract content from web pages.' },
+    { name: 'Testing', content: 'Testing feature allows you to test your MCP tools.' },
+    { name: 'Validation', content: 'Validation feature allows you to validate your MCP tools.' }
+  ];
 
-        <TabPanels>
-          <TabPanel>
-            <ContinuitySearch />
-          </TabPanel>
-          <TabPanel>
-            <PageScraping />
-          </TabPanel>
-          <TabPanel>
-            <Testing />
-          </TabPanel>
-          <TabPanel>
-            <Validation />
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
-    </Box>
+  return (
+    <div style={{ padding: '16px' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #ccc' }}>
+        {tabs.map((tab, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveTab(index)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: activeTab === index ? '#f0f0f0' : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === index ? '2px solid #3182ce' : 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {tab.name}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: '16px' }}>
+        {tabs[activeTab].content}
+      </div>
+    </div>
   );
 };
 
 export default MCPFeatures;
+
